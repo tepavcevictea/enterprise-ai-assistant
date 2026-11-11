@@ -1,0 +1,53 @@
+{
+  "turnId": "c92d5ca0-16eb-4ad6-80db-6376974ddd87",
+  "message": "Please reset my password.",
+  "outcome": "denied",
+  "reply": "You do not have permission to reset a password.",
+  "trace": [
+    {
+      "traceId": "2ab6aa56-b329-46df-8327-0b87742c1b0c",
+      "sessionId": "alex",
+      "turnId": "c92d5ca0-16eb-4ad6-80db-6376974ddd87",
+      "timestamp": "2026-11-11T17:43:09.794Z",
+      "agentId": "orchestrator",
+      "eventType": "plan.validated",
+      "outcome": "success",
+      "result": "it"
+    },
+    {
+      "traceId": "0ea26355-1c05-4af2-b697-82af8d5b442a",
+      "sessionId": "alex",
+      "turnId": "c92d5ca0-16eb-4ad6-80db-6376974ddd87",
+      "timestamp": "2026-11-11T17:43:09.794Z",
+      "agentId": "orchestrator",
+      "eventType": "plan.tasks",
+      "outcome": "success",
+      "result": "[{\"id\":\"reset\",\"specialist\":\"it\",\"order\":1,\"dependsOn\":[],\"objective\":\"Perform a simulated password reset for the signed-in user alex.\",\"action\":\"password_reset\",\"onlySpecialist\":null}]"
+    },
+    {
+      "traceId": "73b5e189-cba1-461f-8ec5-c4288281e003",
+      "sessionId": "alex",
+      "turnId": "c92d5ca0-16eb-4ad6-80db-6376974ddd87",
+      "timestamp": "2026-11-11T17:43:09.794Z",
+      "agentId": "orchestrator",
+      "eventType": "permission.denied",
+      "authorization": "denied",
+      "toolId": "simulatePasswordReset",
+      "outcome": "denied",
+      "errorCode": "denied"
+    }
+  ],
+  "histories": [
+    {
+      "agent": "orchestrator",
+      "turnId": "c92d5ca0-16eb-4ad6-80db-6376974ddd87",
+      "body": "user: Please reset my password."
+    },
+    {
+      "agent": "orchestrator",
+      "turnId": "c92d5ca0-16eb-4ad6-80db-6376974ddd87",
+      "body": "assistant: You do not have permission to reset a password."
+    }
+  ],
+  "passwordResets": []
+}

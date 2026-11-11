@@ -1,8 +1,8 @@
 # TX Services
 
-Local Cloudflare backend for a fictional IT and HR assistant. This slice handles one demo user's message: the orchestrator plans with GPT-6.1 Sol, the IT specialist calls `getServiceStatus`, and the reply and trace are stored in that user's SQLite Durable Object.
+Local Cloudflare backend for a fictional IT and HR assistant. A demo user sends a message, the orchestrator plans with GPT-6.1 Sol, and the matching specialist answers. IT can load the VPN troubleshooting procedure with `loadSkill` and call the native `getServiceStatus` tool. IT Support can run a simulated password reset. HR calls `searchPolicies` on the policy Worker through a private service binding. The reply, trace, and separate agent histories are stored in that user's SQLite Durable Object.
 
-HR, MCP, skill loading, and the React UI are not in this slice. The demo header `x-demo-user` (`alex`, `jordan`, or `taylor`) selects a session. It is not a login.
+The React UI is not in this slice. The demo header `x-demo-user` (`alex`, `jordan`, or `taylor`) selects a session. It is not a login.
 
 ## Setup
 
@@ -24,13 +24,18 @@ npm run test:live
 npm run dev
 ```
 
-`npm test` uses a stub model. `npm run test:live` calls GPT-6.1 Sol inside workerd. `npm run dev` serves the worker locally.
+`npm test` uses a stub model and the real policy Worker. `npm run test:live` calls GPT-6.1 Sol inside workerd. `npm run dev` serves the app Worker and the policy Worker together.
 
 ```sh
 curl -s -X POST http://localhost:8787/messages \
   -H 'content-type: application/json' \
   -H 'x-demo-user: alex' \
   -d '{"message":"Is the company VPN service operational?","idempotencyKey":"vpn-1"}'
+
+curl -s -X POST http://localhost:8787/messages \
+  -H 'content-type: application/json' \
+  -H 'x-demo-user: alex' \
+  -d '{"message":"What does the leave approval policy say?","idempotencyKey":"leave-1"}'
 ```
 
 Reset that user's session with `POST /session/reset` and the same header. `GET /session` returns the stored histories and traces.

@@ -3,12 +3,25 @@ import type { DemoUser } from "./identity";
 
 export const PLAN_MODEL = "gpt-6.1-sol";
 
+const taskActionSchema = z
+  .enum(["read", "password_reset"])
+  .describe(
+    "password_reset only when this task is a simulated password reset. read for status, troubleshooting, policy, and setup.",
+  );
+
 export const planSchema = z.object({
+  onlySpecialist: z
+    .enum(["it", "hr"])
+    .nullable()
+    .describe(
+      "The only specialist allowed when the user assigns every part to one specialist or rules the other specialist out of every part. Null when the user does not constrain every part.",
+    ),
   tasks: z
     .array(
       z.object({
         id: z.string().describe("Unique id for this task. Other tasks reference it from dependsOn.taskId."),
         specialist: z.enum(["it", "hr"]).describe("The specialist who performs this task. Only it or hr."),
+        action: taskActionSchema,
         objective: z.string().describe("The specialist's assignment. This is not the user-facing reply."),
         order: z
           .number()
@@ -34,8 +47,21 @@ export const planSchema = z.object({
     .describe("The tasks in this plan."),
 });
 
-export type Plan = z.infer<typeof planSchema>;
-export type PlanTask = Plan["tasks"][number];
+export type TaskAction = "read" | "password_reset";
+
+export type PlanTask = {
+  id: string;
+  specialist: "it" | "hr";
+  objective: string;
+  order: number;
+  dependsOn: { taskId: string; information: string }[];
+  action?: TaskAction;
+};
+
+export type Plan = {
+  tasks: PlanTask[];
+  onlySpecialist?: "it" | "hr" | null;
+};
 
 export type PlanErrorCode =
   | "duplicate_task_id"
@@ -45,7 +71,8 @@ export type PlanErrorCode =
   | "task_count"
   | "unnecessary_dependency"
   | "invalid_predecessor"
-  | "invalid_task";
+  | "invalid_task"
+  | "named_specialist";
 
 const SPECIALISTS = new Set(["it", "hr"]);
 const ORDERING_ONLY = new Set([
@@ -101,9 +128,29 @@ export function validatePlan(input: unknown): PlanValidation {
     }
   }
 
+  const onlySpecialist = readOnlySpecialist(input, errors);
+  const plan: Plan = { tasks: parsed, onlySpecialist };
+  if (!executionGate(plan).ok) errors.add("named_specialist");
   if (hasCycle(parsed)) errors.add("cycle");
   if (errors.size > 0) return { ok: false, errors: [...errors] };
-  return { ok: true, plan: { tasks: parsed } };
+  return { ok: true, plan };
+}
+
+export function taskAction(task: { action?: string }): TaskAction {
+  return task.action === "password_reset" ? "password_reset" : "read";
+}
+
+export function executionGate(plan: Plan): { ok: true } | { ok: false; error: "named_specialist" } {
+  const only = plan.onlySpecialist ?? null;
+  if (only === null) return { ok: true };
+  return plan.tasks.every((task) => task.specialist === only) ? { ok: true } : { ok: false, error: "named_specialist" };
+}
+
+function readOnlySpecialist(input: object, errors: Set<PlanErrorCode>): "it" | "hr" | null {
+  if (!("onlySpecialist" in input) || input.onlySpecialist === null || input.onlySpecialist === undefined) return null;
+  if (input.onlySpecialist === "it" || input.onlySpecialist === "hr") return input.onlySpecialist;
+  errors.add("invalid_task");
+  return null;
 }
 
 function readTask(value: unknown, errors: Set<PlanErrorCode>, ids: Set<string>): PlanTask | undefined {
@@ -152,7 +199,15 @@ function readTask(value: unknown, errors: Set<PlanErrorCode>, ids: Set<string>):
   if (id === "" || (specialist !== "it" && specialist !== "hr") || typeof objective !== "string" || typeof order !== "number") {
     return undefined;
   }
-  return { id, specialist, objective, order, dependsOn };
+  const action = readAction(record.action, errors);
+  return { id, specialist, objective, order, dependsOn, action };
+}
+
+function readAction(value: unknown, errors: Set<PlanErrorCode>): TaskAction {
+  if (value === undefined) return "read";
+  if (value === "read" || value === "password_reset") return value;
+  errors.add("invalid_task");
+  return "read";
 }
 
 function hasCycle(tasks: PlanTask[]): boolean {
@@ -180,7 +235,7 @@ export function plannerInstructions(identity: DemoUser): string {
     "You write a task plan for a three-agent enterprise assistant. You do not answer the user, call tools, grant permissions, or invent agents.",
     "Specialists you may assign:",
     "- it: service status, troubleshooting, and device setup. This is the only specialist that can perform a simulated password reset.",
-    "- hr: company policy, leave, and equipment entitlements. This specialist cannot reset passwords.",
+    "- hr: company policy, leave, and equipment profiles. This specialist cannot reset passwords.",
     `Signed-in user: ${identity.id}, role ${identity.role}. The user's role does not choose the specialist.`,
     "Rules:",
     "- Assign only it or hr. Use at most four tasks.",
@@ -189,7 +244,20 @@ export function plannerInstructions(identity: DemoUser): string {
     "- id is a unique short lowercase string.",
     "- order is the position of the user-facing part this task answers, starting at 1 in the order the user raised those parts. A task that only supplies a fact for that part uses the same order. order is not execution sequence.",
     "- dependsOn is empty when the task needs no fact produced by another task in this plan. When it does, dependsOn has one entry: that task's id and a short specific name of the fact in information. Do not add a dependency only to sequence work.",
+    "- Earlier user messages are context only. Do not copy a previous answer into a task objective. An objective describes only what the current message asks.",
+    "- An equipment question asks which company equipment profile applies. Do not turn it into a role-specific entitlement or add specifications the user did not ask for.",
+    "- action is password_reset when that task is a simulated password reset, including when the named specialist cannot perform it. Every other task is read.",
+    "- onlySpecialist is it or hr when the user assigns every part to that specialist or rules the other specialist out of every part. It is null when the user does not constrain every part. Do not include a task for a ruled-out specialist.",
   ].join("\n");
+}
+
+export function plannerContext(history: { agent: string; body: string }[], message: string): string {
+  const earlier = history
+    .filter((row) => row.agent === "orchestrator" && row.body.startsWith("user: "))
+    .slice(-6)
+    .map((row) => row.body);
+  const prior = earlier.length === 0 ? "" : `Earlier user messages, for context only:\n${earlier.join("\n")}\n\n`;
+  return `${prior}User:\n${message}`.trim();
 }
 
 export function repairInstructions(identity: DemoUser): string {

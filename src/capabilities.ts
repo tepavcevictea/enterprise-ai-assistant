@@ -22,8 +22,12 @@ const AGENT_GRANTS: Record<AgentId, readonly Capability[]> = {
   hr: ["hr_policy", "equipment_policy", "hr_restricted"],
 };
 
+export function userHas(userId: DemoUserId, capability: Capability): boolean {
+  return USER_GRANTS[userId].includes(capability);
+}
+
 export function permits(userId: DemoUserId, agent: AgentId, capability: Capability): boolean {
-  return USER_GRANTS[userId].includes(capability) && AGENT_GRANTS[agent].includes(capability);
+  return userHas(userId, capability) && AGENT_GRANTS[agent].includes(capability);
 }
 
 export function isAgent(value: string): value is AgentId {

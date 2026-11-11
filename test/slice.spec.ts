@@ -88,8 +88,9 @@ it("denies service status to the orchestrator and allows it for the IT specialis
   expect(allowed.ok).toBe(true);
   if (allowed.ok) expect(allowed.status.detail).toBe(VPN_DETAIL);
   expect(offeredToolIds("alex", "orchestrator")).toEqual([]);
-  expect(offeredToolIds("alex", "hr")).toEqual([]);
-  expect(offeredToolIds("alex", "it")).toEqual(["getServiceStatus"]);
+  expect(offeredToolIds("alex", "hr")).toEqual(["searchPolicies"]);
+  expect(offeredToolIds("alex", "it")).toEqual(["loadSkill", "getServiceStatus"]);
+  expect(runServiceStatus({ userId: "alex", agent: "hr", serviceId: "vpn" }).ok).toBe(false);
 });
 
 it("does not run a task whose predecessor failed", async () => {
@@ -163,17 +164,25 @@ it("returns the VPN status from the IT specialist and keeps histories separate",
   const body = await response.json<{ reply: string; outcome: string; trace: TraceEvent[] }>();
   expect(body.outcome).toBe("success");
   expect(body.reply).toContain(VPN_DETAIL);
-  expect(body.reply).toContain("Here is the explanation.");
+  expect(body.reply.split(VPN_DETAIL).length - 1).toBe(1);
+  expect(body.reply).not.toContain("Here is the explanation.");
   expect(body.trace.map((event) => event.eventType)).toEqual([
     "plan.validated",
+    "plan.tasks",
     "delegation.started",
     "specialist.started",
+    "tool.offered",
     "tool.offered",
     "tool.invoked",
     "tool.result",
     "specialist.completed",
     "delegation.completed",
-    "synthesis.completed",
+    "reply.composed",
+  ]);
+  expect(body.trace.some((event) => event.eventType === "skill.loaded")).toBe(false);
+  expect(body.trace.filter((event) => event.eventType === "tool.offered").map((event) => event.toolId)).toEqual([
+    "loadSkill",
+    "getServiceStatus",
   ]);
   const invoked = body.trace.find((event) => event.eventType === "tool.invoked");
   expect(invoked?.toolId).toBe("getServiceStatus");

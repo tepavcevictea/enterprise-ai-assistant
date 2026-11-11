@@ -1,0 +1,160 @@
+{
+  "turnId": "474c5b2c-4648-4530-a9e3-069f7e7a57c5",
+  "outcome": "success",
+  "reply": "HR: success. Leave approval policy (leave-approval, version 2026-01)\nEmployees request leave through the HR portal. Managers approve planned leave.\n\nUnder the **Leave Approval Policy** (`leave-approval`, version `2026-01`), employees submit leave requests through the HR portal, and managers approve planned leave.",
+  "trace": [
+    {
+      "traceId": "a5b4bd54-7505-4e00-aa93-8315c0a4c6f7",
+      "sessionId": "alex",
+      "turnId": "474c5b2c-4648-4530-a9e3-069f7e7a57c5",
+      "timestamp": "2026-11-11T16:29:19.471Z",
+      "agentId": "orchestrator",
+      "eventType": "plan.validated",
+      "outcome": "success",
+      "result": "hr"
+    },
+    {
+      "traceId": "41b61fd6-b8db-464b-ae6c-a62639bea29a",
+      "sessionId": "alex",
+      "turnId": "474c5b2c-4648-4530-a9e3-069f7e7a57c5",
+      "timestamp": "2026-11-11T16:29:19.473Z",
+      "agentId": "hr",
+      "taskId": "leave",
+      "eventType": "delegation.started"
+    },
+    {
+      "traceId": "c2521208-03d1-4e3c-bd7e-51529f77e7d3",
+      "sessionId": "alex",
+      "turnId": "474c5b2c-4648-4530-a9e3-069f7e7a57c5",
+      "timestamp": "2026-11-11T16:29:19.473Z",
+      "agentId": "hr",
+      "taskId": "leave",
+      "eventType": "specialist.started"
+    },
+    {
+      "traceId": "4e8b03cd-0d79-4a90-a7a7-ef4c9f730293",
+      "sessionId": "alex",
+      "turnId": "474c5b2c-4648-4530-a9e3-069f7e7a57c5",
+      "timestamp": "2026-11-11T16:29:19.498Z",
+      "agentId": "hr",
+      "eventType": "tool.discovered",
+      "toolId": "searchPolicies",
+      "authorization": "allowed",
+      "taskId": "leave"
+    },
+    {
+      "traceId": "ae7bcd3a-1e98-4ab5-bffc-4f0cb098cad2",
+      "sessionId": "alex",
+      "turnId": "474c5b2c-4648-4530-a9e3-069f7e7a57c5",
+      "timestamp": "2026-11-11T16:29:19.499Z",
+      "agentId": "hr",
+      "eventType": "tool.discovered",
+      "toolId": "exportAllPolicies",
+      "authorization": "denied",
+      "taskId": "leave"
+    },
+    {
+      "traceId": "e7a9d111-8734-4ce9-9b01-7d84da71139a",
+      "sessionId": "alex",
+      "turnId": "474c5b2c-4648-4530-a9e3-069f7e7a57c5",
+      "timestamp": "2026-11-11T16:29:19.499Z",
+      "agentId": "hr",
+      "eventType": "tool.denied",
+      "toolId": "exportAllPolicies",
+      "authorization": "denied",
+      "errorCode": "allowlist",
+      "taskId": "leave"
+    },
+    {
+      "traceId": "80bb2833-1cfe-4c25-8b5a-9ea1123ea95b",
+      "sessionId": "alex",
+      "turnId": "474c5b2c-4648-4530-a9e3-069f7e7a57c5",
+      "timestamp": "2026-11-11T16:29:19.499Z",
+      "agentId": "hr",
+      "eventType": "tool.offered",
+      "toolId": "searchPolicies",
+      "authorization": "allowed",
+      "taskId": "leave"
+    },
+    {
+      "traceId": "0fa2d3ba-0e48-4e37-9f80-4f03e222784d",
+      "sessionId": "alex",
+      "turnId": "474c5b2c-4648-4530-a9e3-069f7e7a57c5",
+      "timestamp": "2026-11-11T16:29:20.936Z",
+      "agentId": "hr",
+      "eventType": "tool.invoked",
+      "toolId": "searchPolicies",
+      "authorization": "allowed",
+      "taskId": "leave"
+    },
+    {
+      "traceId": "060dc4f3-a5ea-4f24-9153-2bc2c4aaabf4",
+      "sessionId": "alex",
+      "turnId": "474c5b2c-4648-4530-a9e3-069f7e7a57c5",
+      "timestamp": "2026-11-11T16:29:20.944Z",
+      "agentId": "hr",
+      "eventType": "tool.result",
+      "toolId": "searchPolicies",
+      "authorization": "allowed",
+      "outcome": "success",
+      "result": "leave-approval",
+      "sourceIds": [
+        "leave-approval"
+      ],
+      "taskId": "leave"
+    },
+    {
+      "traceId": "cfb1d1c1-9740-4fcf-b2fb-c63c76e10403",
+      "sessionId": "alex",
+      "turnId": "474c5b2c-4648-4530-a9e3-069f7e7a57c5",
+      "timestamp": "2026-11-11T16:29:23.161Z",
+      "agentId": "hr",
+      "taskId": "leave",
+      "eventType": "specialist.completed",
+      "outcome": "success",
+      "durationMs": 3688
+    },
+    {
+      "traceId": "21a7319e-49ad-4b81-b2ce-a2af8873af3a",
+      "sessionId": "alex",
+      "turnId": "474c5b2c-4648-4530-a9e3-069f7e7a57c5",
+      "timestamp": "2026-11-11T16:29:23.161Z",
+      "agentId": "hr",
+      "taskId": "leave",
+      "eventType": "delegation.completed",
+      "outcome": "success",
+      "durationMs": 3688
+    },
+    {
+      "traceId": "8e4cab2e-edbb-4b4f-a886-5803d0274787",
+      "sessionId": "alex",
+      "turnId": "474c5b2c-4648-4530-a9e3-069f7e7a57c5",
+      "timestamp": "2026-11-11T16:29:24.917Z",
+      "agentId": "orchestrator",
+      "eventType": "synthesis.completed",
+      "outcome": "success"
+    }
+  ],
+  "histories": [
+    {
+      "agent": "orchestrator",
+      "turnId": "474c5b2c-4648-4530-a9e3-069f7e7a57c5",
+      "body": "user: What does the leave approval policy say?"
+    },
+    {
+      "agent": "orchestrator",
+      "turnId": "474c5b2c-4648-4530-a9e3-069f7e7a57c5",
+      "body": "assistant: HR: success. Leave approval policy (leave-approval, version 2026-01)\nEmployees request leave through the HR portal. Managers approve planned leave.\n\nUnder the **Leave Approval Policy** (`leave-approval`, version `2026-01`), employees submit leave requests through the HR portal, and managers approve planned leave."
+    },
+    {
+      "agent": "hr",
+      "turnId": "474c5b2c-4648-4530-a9e3-069f7e7a57c5",
+      "body": "task: Explain the company's leave approval policy."
+    },
+    {
+      "agent": "hr",
+      "turnId": "474c5b2c-4648-4530-a9e3-069f7e7a57c5",
+      "body": "result: Leave approval policy (leave-approval, version 2026-01)\nEmployees request leave through the HR portal. Managers approve planned leave."
+    }
+  ]
+}

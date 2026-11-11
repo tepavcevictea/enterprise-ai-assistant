@@ -1,7 +1,10 @@
 import { DurableObject } from "cloudflare:workers";
 import { isAgent } from "./capabilities";
 import { isDemoUser, USERS } from "./identity";
+import type { McpMode } from "./mcp/pinned-fetch";
 import { modelPort } from "./models";
+import type { Plan } from "./plan";
+import type { PasswordResetRecord } from "./password";
 import type { TraceEvent } from "./trace";
 import { runTurn, type HistoryEntry } from "./turn";
 
@@ -23,6 +26,7 @@ export type Snapshot = {
   generation: number;
   histories: { agent: string; turnId: string; body: string }[];
   traces: TraceEvent[];
+  passwordResets: { turnId: string; targetUser: string; detail: string }[];
 };
 
 type Reservation =
@@ -33,6 +37,8 @@ type Reservation =
 export class SessionObject extends DurableObject<Cloudflare.Env> {
   #gate: Promise<void> | undefined;
   #release: (() => void) | undefined;
+  #stubPlan: Plan | undefined;
+  #mcpMode: McpMode | undefined;
 
   constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
     super(ctx, env);
@@ -51,6 +57,15 @@ export class SessionObject extends DurableObject<Cloudflare.Env> {
     this.#release?.();
     this.#gate = undefined;
     this.#release = undefined;
+  }
+
+  armPlan(plan: Plan): void {
+    if (this.env.MODEL_MODE !== "stub") return;
+    this.#stubPlan = plan;
+  }
+
+  armMcpMode(mode: McpMode): void {
+    this.#mcpMode = mode;
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -95,6 +110,10 @@ export class SessionObject extends DurableObject<Cloudflare.Env> {
     }
 
     const history = this.readHistory();
+    const stubPlan = this.#stubPlan;
+    const mcpMode = this.#mcpMode;
+    this.#stubPlan = undefined;
+    this.#mcpMode = undefined;
     let result;
     try {
       result = await runTurn({
@@ -102,7 +121,7 @@ export class SessionObject extends DurableObject<Cloudflare.Env> {
         message: text,
         turnId,
         history,
-        models: modelPort(this.env),
+        models: modelPort(this.env, { plan: stubPlan, mcpMode }),
       });
     } catch (error) {
       const reply = "The turn failed before a reply was stored.";
@@ -114,6 +133,7 @@ export class SessionObject extends DurableObject<Cloudflare.Env> {
           { agent: "orchestrator" as const, body: `user: ${text}` },
           { agent: "orchestrator" as const, body: `assistant: ${reply}` },
         ],
+        reset: undefined,
         error,
       };
     }
@@ -130,6 +150,7 @@ export class SessionObject extends DurableObject<Cloudflare.Env> {
         requestHash,
         response,
         entries: result.entries,
+        reset: result.reset,
       }),
     );
     if (!wrote) return Response.json({ error: "stale_turn", wrote: false }, { status: 409 });
@@ -175,8 +196,18 @@ export class SessionObject extends DurableObject<Cloudflare.Env> {
     requestHash: string;
     response: TurnResponse;
     entries: HistoryEntry[];
+    reset?: PasswordResetRecord;
   }): boolean {
     if (this.meta("active_turn") !== command.turnId) return false;
+    if (command.reset !== undefined) {
+      this.sql.exec(
+        `INSERT INTO password_resets (turn_id, target_user, record_json) VALUES (?, ?, ?)
+         ON CONFLICT(turn_id, target_user) DO NOTHING`,
+        command.turnId,
+        command.reset.targetUser,
+        JSON.stringify(command.reset),
+      );
+    }
     for (const entry of command.entries) {
       if (!isAgent(entry.agent)) continue;
       this.sql.exec(
@@ -213,10 +244,25 @@ export class SessionObject extends DurableObject<Cloudflare.Env> {
     return true;
   }
 
+  attemptLateReset(turnId: string, record: PasswordResetRecord): boolean {
+    if (this.env.MODEL_MODE !== "stub") return false;
+    return this.ctx.storage.transactionSync(() =>
+      this.finish({
+        turnId,
+        idempotencyKey: `late-${turnId}`,
+        requestHash: "late-reset",
+        response: { turnId, reply: record.detail, outcome: "success", trace: [] },
+        entries: [{ agent: "it", body: `result: ${record.detail}` }],
+        reset: record,
+      }),
+    );
+  }
+
   private resetSession(): void {
     this.ctx.storage.transactionSync(() => {
       this.sql.exec(`DELETE FROM history`);
       this.sql.exec(`DELETE FROM traces`);
+      this.sql.exec(`DELETE FROM password_resets`);
       this.deleteMeta("active_turn");
       this.deleteMeta("active_started_at");
       this.setMeta("session_generation", String(this.sessionGeneration() + 1));
@@ -245,6 +291,15 @@ export class SessionObject extends DurableObject<Cloudflare.Env> {
         .exec<{ event_json: string }>(`SELECT event_json FROM traces ORDER BY id`)
         .toArray()
         .map((row) => JSON.parse(row.event_json) as TraceEvent),
+      passwordResets: this.sql
+        .exec<{ turn_id: string; target_user: string; record_json: string }>(
+          `SELECT turn_id, target_user, record_json FROM password_resets ORDER BY turn_id`,
+        )
+        .toArray()
+        .map((row) => {
+          const record = JSON.parse(row.record_json) as PasswordResetRecord;
+          return { turnId: row.turn_id, targetUser: row.target_user, detail: record.detail };
+        }),
     };
   }
 
@@ -271,6 +326,14 @@ export class SessionObject extends DurableObject<Cloudflare.Env> {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         turn_id TEXT NOT NULL,
         event_json TEXT NOT NULL
+      )`,
+    );
+    this.sql.exec(
+      `CREATE TABLE IF NOT EXISTS password_resets (
+        turn_id TEXT NOT NULL,
+        target_user TEXT NOT NULL,
+        record_json TEXT NOT NULL,
+        PRIMARY KEY (turn_id, target_user)
       )`,
     );
   }
