@@ -1,0 +1,141 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/messages",
+    "headers": {
+      "x-demo-user": "alex"
+    },
+    "body": {
+      "message": "Is the company VPN service operational?"
+    }
+  },
+  "response": {
+    "turnId": "3530ccc9-f70a-4d2f-af67-e9586e62abfd",
+    "reply": "IT: success. Northstar VPN gateway is rejecting new sessions (ns-vpn-degraded).\n\nIT: success. Northstar VPN gateway is rejecting new sessions (ns-vpn-degraded).\n\nThe VPN is currently degraded and not operational. Users attempting to establish new VPN connections will be unable to connect.",
+    "outcome": "success",
+    "trace": [
+      {
+        "traceId": "e51518ad-b057-4dc4-921c-36e95e9b6d7e",
+        "sessionId": "alex",
+        "turnId": "3530ccc9-f70a-4d2f-af67-e9586e62abfd",
+        "timestamp": "2026-11-11T15:29:39.110Z",
+        "agentId": "orchestrator",
+        "eventType": "plan.validated",
+        "outcome": "success",
+        "result": "it"
+      },
+      {
+        "traceId": "2f028848-342d-4585-8dc2-07dbb64c9167",
+        "sessionId": "alex",
+        "turnId": "3530ccc9-f70a-4d2f-af67-e9586e62abfd",
+        "timestamp": "2026-11-11T15:29:39.110Z",
+        "agentId": "it",
+        "taskId": "vpn",
+        "eventType": "delegation.started"
+      },
+      {
+        "traceId": "2760f915-a40d-409d-9284-ce3720d4b372",
+        "sessionId": "alex",
+        "turnId": "3530ccc9-f70a-4d2f-af67-e9586e62abfd",
+        "timestamp": "2026-11-11T15:29:39.110Z",
+        "agentId": "it",
+        "taskId": "vpn",
+        "eventType": "specialist.started"
+      },
+      {
+        "traceId": "b73b5702-c5ee-473e-8339-a9d5e6740cef",
+        "sessionId": "alex",
+        "turnId": "3530ccc9-f70a-4d2f-af67-e9586e62abfd",
+        "timestamp": "2026-11-11T15:29:39.110Z",
+        "agentId": "it",
+        "taskId": "vpn",
+        "eventType": "tool.offered",
+        "toolId": "getServiceStatus",
+        "authorization": "allowed"
+      },
+      {
+        "traceId": "d0f09623-9e80-4ff2-a574-04d7b1af30ce",
+        "sessionId": "alex",
+        "turnId": "3530ccc9-f70a-4d2f-af67-e9586e62abfd",
+        "timestamp": "2026-11-11T15:29:40.583Z",
+        "agentId": "it",
+        "taskId": "vpn",
+        "eventType": "tool.invoked",
+        "toolId": "getServiceStatus",
+        "authorization": "allowed",
+        "sourceIds": [
+          "vpn"
+        ]
+      },
+      {
+        "traceId": "e170d42c-b3ab-4974-999e-2e939d992ba1",
+        "sessionId": "alex",
+        "turnId": "3530ccc9-f70a-4d2f-af67-e9586e62abfd",
+        "timestamp": "2026-11-11T15:29:40.583Z",
+        "agentId": "it",
+        "taskId": "vpn",
+        "eventType": "tool.result",
+        "toolId": "getServiceStatus",
+        "authorization": "allowed",
+        "outcome": "success",
+        "result": "Northstar VPN gateway is rejecting new sessions (ns-vpn-degraded).",
+        "sourceIds": [
+          "vpn"
+        ]
+      },
+      {
+        "traceId": "5ddc1299-8376-4554-a318-92f92b60f3fa",
+        "sessionId": "alex",
+        "turnId": "3530ccc9-f70a-4d2f-af67-e9586e62abfd",
+        "timestamp": "2026-11-11T15:29:42.586Z",
+        "agentId": "it",
+        "taskId": "vpn",
+        "eventType": "specialist.completed",
+        "outcome": "success",
+        "durationMs": 3476
+      },
+      {
+        "traceId": "00e31129-ecf4-45fc-81dc-fe331455cb72",
+        "sessionId": "alex",
+        "turnId": "3530ccc9-f70a-4d2f-af67-e9586e62abfd",
+        "timestamp": "2026-11-11T15:29:42.586Z",
+        "agentId": "it",
+        "taskId": "vpn",
+        "eventType": "delegation.completed",
+        "outcome": "success",
+        "durationMs": 3476
+      },
+      {
+        "traceId": "1e936879-276c-4236-bbf9-97bfef5c2f0c",
+        "sessionId": "alex",
+        "turnId": "3530ccc9-f70a-4d2f-af67-e9586e62abfd",
+        "timestamp": "2026-11-11T15:29:46.828Z",
+        "agentId": "orchestrator",
+        "eventType": "synthesis.completed",
+        "outcome": "success"
+      }
+    ]
+  },
+  "histories": [
+    {
+      "agent": "orchestrator",
+      "turnId": "3530ccc9-f70a-4d2f-af67-e9586e62abfd",
+      "body": "user: Is the company VPN service operational?"
+    },
+    {
+      "agent": "orchestrator",
+      "turnId": "3530ccc9-f70a-4d2f-af67-e9586e62abfd",
+      "body": "assistant: IT: success. Northstar VPN gateway is rejecting new sessions (ns-vpn-degraded).\n\nIT: success. Northstar VPN gateway is rejecting new sessions (ns-vpn-degraded).\n\nThe VPN is currently degraded and not operational. Users attempting to establish new VPN connections will be unable to connect."
+    },
+    {
+      "agent": "it",
+      "turnId": "3530ccc9-f70a-4d2f-af67-e9586e62abfd",
+      "body": "task: Check whether the company VPN service is operational and report its current status."
+    },
+    {
+      "agent": "it",
+      "turnId": "3530ccc9-f70a-4d2f-af67-e9586e62abfd",
+      "body": "result: VPN is not operational; its current state is degraded.\n\nDetail: “Northstar VPN gateway is rejecting new sessions (ns-vpn-degraded).”"
+    }
+  ]
+}

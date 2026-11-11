@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "mcp-experiment-app",
+  "main": "src/app.ts",
+  "compatibility_date": "2026-11-11",
+  "compatibility_flags": ["nodejs_compat"],
+  "services": [
+    {
+      "binding": "POLICY",
+      "service": "mcp-experiment-policy"
+    }
+  ]
+}

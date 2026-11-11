@@ -1,0 +1,24 @@
+# Dependencies and build output
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Cloudflare local state
+.wrangler/
+
+# Secrets at any depth. Example files stay tracked.
+**/.dev.vars
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+!**/.dev.vars.example
+
+# Temporary and local files
+.DS_Store
+*.log
+tmp/
+.cache/
+.vite/

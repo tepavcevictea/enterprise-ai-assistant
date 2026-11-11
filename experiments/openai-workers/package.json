@@ -1,0 +1,23 @@
+{
+  "name": "openai-workers-experiment",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "plan-eval": "vitest run test/planning.eval.spec.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "4.0.114",
+    "ai": "7.0.169",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.7.0",
+    "@cloudflare/workers-types": "5.20261110.1",
+    "typescript": "5.9.3",
+    "vite": "8.3.8",
+    "vitest": "5.1.0",
+    "wrangler": "4.160.0"
+  }
+}

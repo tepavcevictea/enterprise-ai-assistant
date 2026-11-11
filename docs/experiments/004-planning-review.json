@@ -1,0 +1,494 @@
+{
+  "kind": "review",
+  "effort": "medium",
+  "model": "gpt-6.1-sol",
+  "instructions": "You write a task plan for a three-agent enterprise assistant. You do not answer the user, call tools, grant permissions, or invent agents.\nSpecialists you may assign:\n- it: service status, troubleshooting, and device setup. This is the only specialist that can perform a simulated password reset.\n- hr: company policy, leave, and equipment entitlements. This specialist cannot reset passwords.\nSigned-in user: alex, role Employee. The user's role does not choose the specialist.\nRules:\n- Assign only it or hr. Use at most four tasks.\n- If the user explicitly assigns a part to a specialist, or explicitly rules a specialist out, follow that for every part the instruction covers. Do not move a covered part to the specialist who has the capability, and do not add a ruled-out specialist. An instruction that does not cover a part does not change that part.\n- When the user names no specialist, assign each user-facing part by subject.\n- id is a unique short lowercase string.\n- order is the position of the user-facing part this task answers, starting at 1 in the order the user raised those parts. A task that only supplies a fact for that part uses the same order. order is not execution sequence.\n- dependsOn is empty when the task needs no fact produced by another task in this plan. When it does, dependsOn has one entry: that task's id and a short specific name of the fact in information. Do not add a dependency only to sequence work.",
+  "calls": [
+    {
+      "caseId": "R-A5",
+      "request": "IT should handle everything. My headset does not appear in meetings, and what is the bereavement leave allowance?",
+      "identity": {
+        "id": "alex",
+        "role": "Employee"
+      },
+      "schemaValid": true,
+      "executable": true,
+      "issues": [],
+      "executableErrors": [],
+      "latencyMs": 2827,
+      "usage": {
+        "inputTokens": 580,
+        "outputTokens": 88,
+        "totalTokens": 668,
+        "reasoningTokens": 0
+      },
+      "transport": {
+        "method": "POST",
+        "host": "api.openai.com",
+        "pathname": "/v1/responses",
+        "hasAuthorization": true,
+        "model": "gpt-6.1-sol",
+        "store": false,
+        "reasoningEffort": "medium",
+        "hasTemperature": false,
+        "hasTopP": false,
+        "toolNames": [],
+        "signalAborted": false
+      },
+      "plan": {
+        "tasks": [
+          {
+            "id": "headset",
+            "specialist": "it",
+            "objective": "Troubleshoot why the user's headset does not appear in meetings.",
+            "order": 1,
+            "dependsOn": []
+          },
+          {
+            "id": "bereavement",
+            "specialist": "it",
+            "objective": "Address the user's question about the company bereavement leave allowance, following the explicit instruction that IT handle everything.",
+            "order": 2,
+            "dependsOn": []
+          }
+        ]
+      },
+      "error": null,
+      "executed": false
+    },
+    {
+      "caseId": "R-A5b",
+      "request": "Have IT take care of all of this. My monitor stays black, and how many sick days do new employees receive?",
+      "identity": {
+        "id": "alex",
+        "role": "Employee"
+      },
+      "schemaValid": true,
+      "executable": true,
+      "issues": [],
+      "executableErrors": [],
+      "latencyMs": 2670,
+      "usage": {
+        "inputTokens": 581,
+        "outputTokens": 73,
+        "totalTokens": 654,
+        "reasoningTokens": 0
+      },
+      "transport": {
+        "method": "POST",
+        "host": "api.openai.com",
+        "pathname": "/v1/responses",
+        "hasAuthorization": true,
+        "model": "gpt-6.1-sol",
+        "store": false,
+        "reasoningEffort": "medium",
+        "hasTemperature": false,
+        "hasTopP": false,
+        "toolNames": [],
+        "signalAborted": false
+      },
+      "plan": {
+        "tasks": [
+          {
+            "id": "monitor",
+            "specialist": "it",
+            "objective": "Troubleshoot the user's monitor staying black.",
+            "order": 1,
+            "dependsOn": []
+          },
+          {
+            "id": "sickdays",
+            "specialist": "it",
+            "objective": "Determine how many sick days new employees receive under company policy.",
+            "order": 2,
+            "dependsOn": []
+          }
+        ]
+      },
+      "error": null,
+      "executed": false
+    },
+    {
+      "caseId": "R-split",
+      "request": "Ask IT why my headset does not appear in meetings. What is the bereavement leave allowance?",
+      "identity": {
+        "id": "alex",
+        "role": "Employee"
+      },
+      "schemaValid": true,
+      "executable": true,
+      "issues": [],
+      "executableErrors": [],
+      "latencyMs": 2982,
+      "usage": {
+        "inputTokens": 577,
+        "outputTokens": 78,
+        "totalTokens": 655,
+        "reasoningTokens": 0
+      },
+      "transport": {
+        "method": "POST",
+        "host": "api.openai.com",
+        "pathname": "/v1/responses",
+        "hasAuthorization": true,
+        "model": "gpt-6.1-sol",
+        "store": false,
+        "reasoningEffort": "medium",
+        "hasTemperature": false,
+        "hasTopP": false,
+        "toolNames": [],
+        "signalAborted": false
+      },
+      "plan": {
+        "tasks": [
+          {
+            "id": "headset",
+            "specialist": "it",
+            "objective": "Troubleshoot why alex's headset does not appear in meetings.",
+            "order": 1,
+            "dependsOn": []
+          },
+          {
+            "id": "bereavement",
+            "specialist": "hr",
+            "objective": "Provide the company's bereavement leave allowance applicable to alex.",
+            "order": 2,
+            "dependsOn": []
+          }
+        ]
+      },
+      "error": null,
+      "executed": false
+    },
+    {
+      "caseId": "R-named-hr",
+      "request": "Ask the HR specialist to reset my password. Do not use IT.",
+      "identity": {
+        "id": "jordan",
+        "role": "IT Support"
+      },
+      "schemaValid": true,
+      "executable": true,
+      "issues": [],
+      "executableErrors": [],
+      "latencyMs": 3262,
+      "usage": {
+        "inputTokens": 572,
+        "outputTokens": 60,
+        "totalTokens": 632,
+        "reasoningTokens": 0
+      },
+      "transport": {
+        "method": "POST",
+        "host": "api.openai.com",
+        "pathname": "/v1/responses",
+        "hasAuthorization": true,
+        "model": "gpt-6.1-sol",
+        "store": false,
+        "reasoningEffort": "medium",
+        "hasTemperature": false,
+        "hasTopP": false,
+        "toolNames": [],
+        "signalAborted": false
+      },
+      "plan": {
+        "tasks": [
+          {
+            "id": "reset",
+            "specialist": "hr",
+            "objective": "Handle the user's password reset request without involving IT. Explain that HR cannot perform password resets; do not reset the password or claim it was reset.",
+            "order": 1,
+            "dependsOn": []
+          }
+        ]
+      },
+      "error": null,
+      "executed": false
+    },
+    {
+      "caseId": "R-exclude-hr",
+      "request": "Do not ask HR. Tell me how to configure the laptop company policy entitles me to.",
+      "identity": {
+        "id": "jordan",
+        "role": "IT Support"
+      },
+      "schemaValid": true,
+      "executable": true,
+      "issues": [
+        "unnecessary_task",
+        "unnecessary_dependency"
+      ],
+      "executableErrors": [],
+      "latencyMs": 6396,
+      "usage": {
+        "inputTokens": 577,
+        "outputTokens": 226,
+        "totalTokens": 803,
+        "reasoningTokens": 118
+      },
+      "transport": {
+        "method": "POST",
+        "host": "api.openai.com",
+        "pathname": "/v1/responses",
+        "hasAuthorization": true,
+        "model": "gpt-6.1-sol",
+        "store": false,
+        "reasoningEffort": "medium",
+        "hasTemperature": false,
+        "hasTopP": false,
+        "toolNames": [],
+        "signalAborted": false
+      },
+      "plan": {
+        "tasks": [
+          {
+            "id": "entitlement",
+            "specialist": "it",
+            "objective": "Determine which laptop company policy entitles Jordan to, using available policy information without consulting HR.",
+            "order": 1,
+            "dependsOn": []
+          },
+          {
+            "id": "configure",
+            "specialist": "it",
+            "objective": "Explain how to configure the laptop identified as Jordan's company-policy entitlement, without consulting HR.",
+            "order": 1,
+            "dependsOn": [
+              {
+                "taskId": "entitlement",
+                "information": "Laptop model Jordan is entitled to under company policy"
+              }
+            ]
+          }
+        ]
+      },
+      "error": null,
+      "executed": false
+    },
+    {
+      "caseId": "R-B3",
+      "request": "How should I configure my laptop for the equipment profile company policy entitles me to?",
+      "identity": {
+        "id": "jordan",
+        "role": "IT Support"
+      },
+      "schemaValid": true,
+      "executable": true,
+      "issues": [],
+      "executableErrors": [],
+      "latencyMs": 3716,
+      "usage": {
+        "inputTokens": 575,
+        "outputTokens": 148,
+        "totalTokens": 723,
+        "reasoningTokens": 46
+      },
+      "transport": {
+        "method": "POST",
+        "host": "api.openai.com",
+        "pathname": "/v1/responses",
+        "hasAuthorization": true,
+        "model": "gpt-6.1-sol",
+        "store": false,
+        "reasoningEffort": "medium",
+        "hasTemperature": false,
+        "hasTopP": false,
+        "toolNames": [],
+        "signalAborted": false
+      },
+      "plan": {
+        "tasks": [
+          {
+            "id": "profile",
+            "specialist": "hr",
+            "objective": "Determine the laptop equipment profile that company policy entitles Jordan to as an IT Support employee.",
+            "order": 1,
+            "dependsOn": []
+          },
+          {
+            "id": "configure",
+            "specialist": "it",
+            "objective": "Explain how Jordan should configure their laptop for the equipment profile established by HR.",
+            "order": 1,
+            "dependsOn": [
+              {
+                "taskId": "profile",
+                "information": "Jordan's policy-entitled laptop equipment profile"
+              }
+            ]
+          }
+        ]
+      },
+      "error": null,
+      "executed": false
+    },
+    {
+      "caseId": "R-B3b",
+      "request": "What setup should I use for the laptop profile I am entitled to under company policy?",
+      "identity": {
+        "id": "jordan",
+        "role": "IT Support"
+      },
+      "schemaValid": true,
+      "executable": true,
+      "issues": [],
+      "executableErrors": [],
+      "latencyMs": 5134,
+      "usage": {
+        "inputTokens": 575,
+        "outputTokens": 148,
+        "totalTokens": 723,
+        "reasoningTokens": 54
+      },
+      "transport": {
+        "method": "POST",
+        "host": "api.openai.com",
+        "pathname": "/v1/responses",
+        "hasAuthorization": true,
+        "model": "gpt-6.1-sol",
+        "store": false,
+        "reasoningEffort": "medium",
+        "hasTemperature": false,
+        "hasTopP": false,
+        "toolNames": [],
+        "signalAborted": false
+      },
+      "plan": {
+        "tasks": [
+          {
+            "id": "profile",
+            "specialist": "hr",
+            "objective": "Determine the laptop profile Jordan is entitled to under company policy.",
+            "order": 1,
+            "dependsOn": []
+          },
+          {
+            "id": "setup",
+            "specialist": "it",
+            "objective": "Recommend the laptop setup appropriate for Jordan's policy-entitled laptop profile.",
+            "order": 1,
+            "dependsOn": [
+              {
+                "taskId": "profile",
+                "information": "Jordan's policy-entitled laptop profile"
+              }
+            ]
+          }
+        ]
+      },
+      "error": null,
+      "executed": false
+    },
+    {
+      "caseId": "R-B4",
+      "request": "Ask IT how to configure the laptop I should receive, but only after HR confirms the equipment profile in the policy.",
+      "identity": {
+        "id": "jordan",
+        "role": "IT Support"
+      },
+      "schemaValid": true,
+      "executable": true,
+      "issues": [
+        "order"
+      ],
+      "executableErrors": [],
+      "latencyMs": 6680,
+      "usage": {
+        "inputTokens": 581,
+        "outputTokens": 223,
+        "totalTokens": 804,
+        "reasoningTokens": 126
+      },
+      "transport": {
+        "method": "POST",
+        "host": "api.openai.com",
+        "pathname": "/v1/responses",
+        "hasAuthorization": true,
+        "model": "gpt-6.1-sol",
+        "store": false,
+        "reasoningEffort": "medium",
+        "hasTemperature": false,
+        "hasTopP": false,
+        "toolNames": [],
+        "signalAborted": false
+      },
+      "plan": {
+        "tasks": [
+          {
+            "id": "profile",
+            "specialist": "hr",
+            "objective": "Confirm the equipment profile, including the laptop Jordan should receive, under company policy.",
+            "order": 1,
+            "dependsOn": []
+          },
+          {
+            "id": "configure",
+            "specialist": "it",
+            "objective": "Explain how to configure the laptop identified in HR's confirmed equipment profile.",
+            "order": 1,
+            "dependsOn": [
+              {
+                "taskId": "profile",
+                "information": "Policy-confirmed laptop equipment profile"
+              }
+            ]
+          }
+        ]
+      },
+      "error": null,
+      "executed": false
+    },
+    {
+      "caseId": "R-two-questions",
+      "request": "My VPN isn't connecting. Also, how long does vacation approval normally take?",
+      "identity": {
+        "id": "alex",
+        "role": "Employee"
+      },
+      "schemaValid": true,
+      "executable": true,
+      "issues": [],
+      "executableErrors": [],
+      "latencyMs": 3139,
+      "usage": {
+        "inputTokens": 572,
+        "outputTokens": 70,
+        "totalTokens": 642,
+        "reasoningTokens": 0
+      },
+      "transport": {
+        "method": "POST",
+        "host": "api.openai.com",
+        "pathname": "/v1/responses",
+        "hasAuthorization": true,
+        "model": "gpt-6.1-sol",
+        "store": false,
+        "reasoningEffort": "medium",
+        "hasTemperature": false,
+        "hasTopP": false,
+        "toolNames": [],
+        "signalAborted": false
+      },
+      "plan": {
+        "tasks": [
+          {
+            "id": "vpn",
+            "specialist": "it",
+            "objective": "Troubleshoot the user's VPN connection failure.",
+            "order": 1,
+            "dependsOn": []
+          },
+          {
+            "id": "vacation",
+            "specialist": "hr",
+            "objective": "Explain the normal vacation approval timeline under company policy.",
+            "order": 2,
+            "dependsOn": []
+          }
+        ]
+      },
+      "error": null,
+      "executed": false
+    }
+  ]
+}

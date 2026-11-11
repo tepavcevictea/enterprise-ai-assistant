@@ -1,0 +1,11 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "tx-services",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-11-11",
+  "vars": { "MODEL_MODE": "stub" },
+  "durable_objects": {
+    "bindings": [{ "name": "SESSION", "class_name": "SessionObject" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SessionObject"] }]
+}
