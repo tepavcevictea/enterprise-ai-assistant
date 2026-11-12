@@ -1,6 +1,9 @@
 import type { PlanTask } from "./plan";
 import type { TaskResult } from "./schedule";
 
+export const OUTSIDE_SCOPE =
+  "I can help with Northstar IT and HR questions: service status, troubleshooting, a simulated password reset, company policy, leave, and equipment. I don't have a source for that question.";
+
 export function composeReply(tasks: PlanTask[], results: TaskResult[]): string {
   const byId = new Map(results.map((result) => [result.taskId, result]));
   const groups = new Map<number, PlanTask[]>();

@@ -2,7 +2,7 @@ import { runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { expect, it } from "vitest";
 import { UNAVAILABLE_POLICY } from "../src/mcp/policy-client";
-import { EQUIPMENT_BODY, EQUIPMENT_PROFILE, LEAVE_BODY, RESTRICTED_BADGE } from "../src/policies";
+import { EQUIPMENT_BODY, EQUIPMENT_PROFILE, LEAVE_BODY } from "../src/policies";
 import { RESET_DENIED, RESET_WITHHELD } from "../src/password";
 import { SessionObject } from "../src/session";
 import { VPN_DETAIL } from "../src/status";
@@ -94,7 +94,6 @@ it("asks the HR specialist for the leave approval policy", async () => {
   expect(body.trace.some((event) => event.eventType === "tool.result" && event.sourceIds?.includes("leave-approval"))).toBe(true);
   expect(body.trace.some((event) => event.agentId === "orchestrator" && event.toolId !== undefined)).toBe(false);
   expect(body.reply).toContain(LEAVE_BODY);
-  expect(body.reply).not.toContain(RESTRICTED_BADGE);
 
   const session = await worker.fetch(
     new Request("https://app.local/session", { headers: { "x-demo-user": "alex" } }),
@@ -329,26 +328,26 @@ async function askWhilePolicyFails(mode: "error" | "timeout") {
   const reset = await worker.fetch(
     new Request("https://app.local/session/reset", {
       method: "POST",
-      headers: { "content-type": "application/json", "x-demo-user": "taylor" },
+      headers: { "content-type": "application/json", "x-demo-user": "alex" },
       body: "{}",
     }),
     env,
   );
   expect(reset.status).toBe(200);
-  await runInDurableObject(env.SESSION.getByName("taylor"), (instance) => {
+  await runInDurableObject(env.SESSION.getByName("alex"), (instance) => {
     (instance as SessionObject).armMcpMode(mode);
   });
   const response = await worker.fetch(
     new Request("https://app.local/messages", {
       method: "POST",
-      headers: { "content-type": "application/json", "x-demo-user": "taylor" },
+      headers: { "content-type": "application/json", "x-demo-user": "alex" },
       body: JSON.stringify({ message: S7_MESSAGE, idempotencyKey: `live-s7-${mode}-${crypto.randomUUID()}` }),
     }),
     env,
   );
   expect(response.status).toBe(200);
   const body = await response.json<{ reply: string; outcome: string; trace: TraceEvent[]; turnId: string }>();
-  const session = await worker.fetch(new Request("https://app.local/session", { headers: { "x-demo-user": "taylor" } }), env);
+  const session = await worker.fetch(new Request("https://app.local/session", { headers: { "x-demo-user": "alex" } }), env);
   const snapshot = await session.json<{
     histories: { agent: string; turnId: string; body: string }[];
     passwordResets: unknown[];

@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { expect, it } from "vitest";
 import { USERS } from "../src/identity";
 import { modelPort, type ModelPort } from "../src/models";
+import { OUTSIDE_SCOPE } from "../src/reply";
 import { EQUIPMENT_PROFILE } from "../src/policies";
 import { runServiceStatus } from "../src/status";
 import { runTurn } from "../src/turn";
@@ -109,6 +110,38 @@ it("does not report IT success when the native status tool is denied or fails", 
   expect(failedTurn.trace.some((event) => event.eventType === "specialist.completed" && event.agentId === "it" && event.outcome === "failed")).toBe(true);
   expect(failedTurn.reply).toBe("The service status tool failed.");
   expect(failedTurn.reply).not.toContain("success");
+});
+
+it("explains an unsupported request without calling a specialist", async () => {
+  let delegated = false;
+  const models: ModelPort = {
+    plan: async () => ({ ok: true, repaired: false, plan: { outsideScope: true, tasks: [] } }),
+    runIt: async () => {
+      delegated = true;
+      return { text: "The IT specialist did not produce a verified result.", statuses: [], outcome: "failed" };
+    },
+    runHr: async () => {
+      delegated = true;
+      return { outcome: "failed", text: "The HR specialist did not retrieve a policy.", report: "The HR specialist did not retrieve a policy." };
+    },
+    synthesize: unused(),
+  };
+  const result = await runTurn({
+    user: USERS.alex,
+    message: "What is the weather today?",
+    turnId: "outside-scope",
+    history: [],
+    models,
+  });
+  expect(delegated).toBe(false);
+  expect(result.outcome).toBe("unsupported");
+  expect(result.outcome).not.toBe("success");
+  expect(result.reply).toBe(OUTSIDE_SCOPE);
+  expect(result.reply).not.toContain("weather");
+  expect(result.reply).not.toContain("verified result");
+  expect(result.trace.some((event) => event.eventType === "delegation.started")).toBe(false);
+  expect(result.trace.some((event) => event.eventType === "reply.composed" && event.outcome === "unsupported")).toBe(true);
+  expect(result.trace.some((event) => event.eventType === "reply.composed" && event.outcome === "success")).toBe(false);
 });
 
 it("keeps a successful IT task that only uses a predecessor handoff", async () => {

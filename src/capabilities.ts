@@ -7,19 +7,17 @@ export type Capability =
   | "troubleshooting"
   | "password_reset"
   | "hr_policy"
-  | "equipment_policy"
-  | "hr_restricted";
+  | "equipment_policy";
 
 const USER_GRANTS: Record<DemoUserId, readonly Capability[]> = {
   alex: ["service_status", "troubleshooting", "hr_policy", "equipment_policy"],
   jordan: ["service_status", "troubleshooting", "hr_policy", "equipment_policy", "password_reset"],
-  taylor: ["service_status", "troubleshooting", "hr_policy", "equipment_policy", "hr_restricted"],
 };
 
 const AGENT_GRANTS: Record<AgentId, readonly Capability[]> = {
   orchestrator: [],
   it: ["service_status", "troubleshooting", "password_reset"],
-  hr: ["hr_policy", "equipment_policy", "hr_restricted"],
+  hr: ["hr_policy", "equipment_policy"],
 };
 
 export function userHas(userId: DemoUserId, capability: Capability): boolean {

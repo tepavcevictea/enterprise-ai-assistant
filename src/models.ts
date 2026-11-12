@@ -46,12 +46,13 @@ export type ModelPort = {
   runHr(input: {
     user: DemoUser;
     objective: string;
+    message?: string;
     history: HistoryRow[];
     notes: { information: string; value: string }[];
     signal: AbortSignal;
     trace: (event: TraceEvent) => void;
     base: { sessionId: string; turnId: string; taskId: string };
-  }): Promise<{ text: string; outcome: "success" | "needs_input" | "denied" | "unavailable" | "failed"; report: string; handoff?: string }>;
+  }): Promise<{ text: string; outcome: Outcome; report: string; handoff?: string }>;
   synthesize(input: { statusLine: string; notes: string; signal: AbortSignal }): Promise<string>;
 };
 

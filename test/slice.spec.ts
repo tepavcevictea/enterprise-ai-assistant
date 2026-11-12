@@ -199,19 +199,19 @@ it("returns the VPN status from the IT specialist and keeps histories separate",
 });
 
 it("replays a completed key and rejects the same key with a different message", async () => {
-  await reset("taylor");
-  const first = await send("taylor", { message: "first status question", idempotencyKey: "taylor-key" });
+  await reset("jordan");
+  const first = await send("jordan", { message: "first status question", idempotencyKey: "jordan-replay-key" });
   expect(first.status).toBe(200);
   const stored = await first.json<{ reply: string }>();
-  const replay = await send("taylor", { message: "first status question", idempotencyKey: "taylor-key" });
+  const replay = await send("jordan", { message: "first status question", idempotencyKey: "jordan-replay-key" });
   expect(replay.status).toBe(200);
   const replayed = await replay.json<{ reply: string; replay: boolean }>();
   expect(replayed.replay).toBe(true);
   expect(replayed.reply).toBe(stored.reply);
-  const snapshot = await read("taylor");
+  const snapshot = await read("jordan");
   expect(snapshot.histories.filter((row) => row.body.includes("first status question"))).toHaveLength(1);
 
-  const mismatch = await send("taylor", { message: "different question", idempotencyKey: "taylor-key" });
+  const mismatch = await send("jordan", { message: "different question", idempotencyKey: "jordan-replay-key" });
   expect(mismatch.status).toBe(409);
   expect(await mismatch.json()).toEqual({ error: "idempotency_mismatch" });
 });

@@ -80,6 +80,22 @@ it("rejects an empty plan and a plan with more than four tasks", () => {
   if (!excessive.ok) expect(excessive.errors).toContain("task_count");
 });
 
+it("accepts an empty plan only when the request is outside scope", () => {
+  const declined = validatePlan({ outsideScope: true, tasks: [] });
+  expect(declined.ok).toBe(true);
+  if (declined.ok) {
+    expect(declined.plan.outsideScope).toBe(true);
+    expect(declined.plan.tasks).toEqual([]);
+  }
+
+  const mixed = validatePlan({
+    outsideScope: true,
+    tasks: [task({ id: "weather", objective: "Look up the weather" })],
+  });
+  expect(mixed.ok).toBe(false);
+  if (!mixed.ok) expect(mixed.errors).toContain("invalid_task");
+});
+
 it("accepts an executable dependent plan", () => {
   const result = validatePlan({
     tasks: [

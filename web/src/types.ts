@@ -1,7 +1,6 @@
 export const DEMO_USERS = [
   { id: "alex", name: "Alex", email: "alex@northstar.example", role: "Employee" },
   { id: "jordan", name: "Jordan", email: "jordan@northstar.example", role: "IT Support" },
-  { id: "taylor", name: "Taylor", email: "taylor@northstar.example", role: "HR Operations" },
 ] as const;
 
 export type DemoUserId = (typeof DEMO_USERS)[number]["id"];

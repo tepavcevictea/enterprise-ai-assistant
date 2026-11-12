@@ -1,6 +1,6 @@
 import type { AgentId, HistoryRow, TraceEvent } from "./types";
 
-export type TurnStatus = "success" | "partial" | "denied" | "unavailable" | "failed" | "needs_input" | "unknown";
+export type TurnStatus = "success" | "partial" | "denied" | "unavailable" | "failed" | "needs_input" | "unsupported" | "unknown";
 
 export type SpecialistOutcome = {
   agent: AgentId;
@@ -21,6 +21,7 @@ const STATUS_LABEL: Record<TurnStatus, string> = {
   unavailable: "Unavailable",
   failed: "Could not complete",
   needs_input: "More information needed",
+  unsupported: "Not covered",
   unknown: "Recorded",
 };
 
@@ -30,6 +31,7 @@ const OUTCOME_LABEL: Record<string, string> = {
   unavailable: "Unavailable",
   failed: "Could not complete",
   needs_input: "More information needed",
+  unsupported: "Not covered",
 };
 
 const EVENT_LABEL: Record<string, string> = {
@@ -128,7 +130,14 @@ export function turnStatus(traces: TraceEvent[], turnId: string): TurnStatus {
 }
 
 function knownStatus(outcome: string | undefined): TurnStatus {
-  if (outcome === "success" || outcome === "denied" || outcome === "unavailable" || outcome === "failed" || outcome === "needs_input") {
+  if (
+    outcome === "success" ||
+    outcome === "denied" ||
+    outcome === "unavailable" ||
+    outcome === "failed" ||
+    outcome === "needs_input" ||
+    outcome === "unsupported"
+  ) {
     return outcome;
   }
   return "unknown";

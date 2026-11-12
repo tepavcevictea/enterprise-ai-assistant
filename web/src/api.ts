@@ -17,7 +17,7 @@ const ERROR_TEXT: Record<string, string> = {
   invalid_message: "Enter a question of 2,000 characters or fewer.",
   invalid_idempotency_key: "The request could not be identified. Try again.",
   invalid_json: "The assistant service could not read that request.",
-  unknown_user: "Choose Alex, Jordan, or Taylor.",
+  unknown_user: "Choose Alex or Jordan.",
   object_id_rejected: "The assistant service rejected the request.",
   not_found: "The assistant service has no such route.",
   unreachable: "The assistant service is not reachable. From the repository root, run npm run dev.",

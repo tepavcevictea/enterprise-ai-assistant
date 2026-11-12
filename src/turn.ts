@@ -2,7 +2,7 @@ import type { DemoUser } from "./identity";
 import type { HistoryRow, ModelPort } from "./models";
 import { RESET_DENIED, RESET_WITHHELD, type PasswordResetRecord } from "./password";
 import { executionGate, taskAction, type PlanTask } from "./plan";
-import { composeReply } from "./reply";
+import { OUTSIDE_SCOPE, composeReply } from "./reply";
 import { scheduleTasks, type Outcome, type TaskResult } from "./schedule";
 import { permits, userHas } from "./capabilities";
 import type { TraceEvent } from "./trace";
@@ -77,6 +77,18 @@ export async function runTurn(input: {
         ),
       }),
     );
+    if (planned.plan.outsideScope === true) {
+      record(traceEvent(base, { agentId: "orchestrator", eventType: "reply.composed", outcome: "unsupported" }));
+      return {
+        reply: OUTSIDE_SCOPE,
+        outcome: "unsupported",
+        trace,
+        entries: [
+          { agent: "orchestrator", body: `user: ${input.message}` },
+          { agent: "orchestrator", body: `assistant: ${OUTSIDE_SCOPE}` },
+        ],
+      };
+    }
     if (planned.plan.tasks.some((task) => taskAction(task) === "password_reset") && !userHas(input.user.id, "password_reset")) {
       record(
         traceEvent(base, {
@@ -124,6 +136,7 @@ export async function runTurn(input: {
       run: async (task, notes) => {
         const result = await runTask({
           user: input.user,
+          message: input.message,
           task,
           notes,
           history: input.history,
@@ -168,6 +181,7 @@ export async function runTurn(input: {
 
 async function runTask(input: {
   user: DemoUser;
+  message: string;
   task: PlanTask;
   notes: { information: string; value: string }[];
   history: HistoryRow[];
@@ -214,6 +228,7 @@ async function runTask(input: {
       const result = await input.models.runHr({
         user: input.user,
         objective: input.task.objective,
+        message: input.message,
         history: input.history,
         notes: input.notes,
         signal: input.signal,

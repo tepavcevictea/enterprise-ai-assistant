@@ -1,42 +1,102 @@
-# TX Services
+# Northstar IT and HR assistant
 
-Local Cloudflare backend for a fictional IT and HR assistant. A demo user sends a message, the orchestrator plans with GPT-6.1 Sol, and the matching specialist answers. IT can load the VPN troubleshooting procedure with `loadSkill` and call the native `getServiceStatus` tool. IT Support can run a simulated password reset. HR calls `searchPolicies` on the policy Worker through a private service binding. The reply, trace, and separate agent histories are stored in that user's SQLite Durable Object.
+A local prototype for fictional Northstar. An orchestrator plans each question, and IT and HR specialists answer with real model calls. Service status, password resets, and the policy documents are simulated. The MCP connection is real.
 
-The demo header `x-demo-user` (`alex`, `jordan`, or `taylor`) selects a session. It is not a login. The React app in `web/` sends that header and reads the stored session. It does not see the API key.
+## Architecture
 
-## Setup
+```mermaid
+flowchart LR
+  person[Person] --> orchestrator[Orchestrator]
+  orchestrator --> it[IT specialist]
+  orchestrator --> hr[HR specialist]
+  it --> tools[Status, skill, reset]
+  hr --> policy[Policy Worker]
+```
 
-Node 22. From this directory:
+There are exactly three agents. Only the orchestrator speaks to the user. Planning uses `gpt-6.1-sol` through the Vercel AI SDK on the OpenAI Responses API, with `store: false`, medium reasoning for the plan, and low reasoning for the specialists. Independent tasks run in one wave. A dependent task waits for a typed handoff, such as the equipment profile id, and does not receive the other specialist's raw text.
+
+IT's tools are `getServiceStatus`, `loadSkill`, and `simulatePasswordReset`. The VPN procedure loads only when IT asks for it. HR reaches policy through MCP: the app Worker calls a second Worker on a private service binding, and the model is offered only `searchPolicies`. Each demo user has a SQLite Durable Object for history, traces, and reset rows. React shows the conversation and the trace. Specialist calls stop after four tool steps. The visible reply is composed in code, so denied, unavailable, and failed are not reported as success. I kept the loop in TypeScript. With two specialists, the permission check, the dependency gate, and the trace stay visible.
+
+## Technology
+
+| Piece | Choice |
+| --- | --- |
+| Runtime | Cloudflare Workers |
+| Session | SQLite Durable Object, one per demo user |
+| Model | `gpt-6.1-sol` through the Vercel AI SDK, Responses API |
+| Policy access | MCP `searchPolicies` on a service binding |
+| Interface | React and TypeScript |
+
+## Demo users
+
+The page selector is a demo switch, not a login. A tool runs only when both the user and the agent have the capability, and the message cannot change the role.
+
+| User | Role | Allowed | Not allowed |
+| --- | --- | --- | --- |
+| Alex, `alex@northstar.example` | Employee | Service status, troubleshooting, company policy | Password reset |
+| Jordan, `jordan@northstar.example` | IT Support | The same access, plus a simulated password reset | HR executing that reset |
+
+## How I used AI tools
+
+I used GPT-6 to plan the system, compare tradeoffs, and review the approach, and Grok 4.7 in Cursor to implement and review code. I did not treat generated code as correct. I tested MCP, model tool calling, and Durable Object state before joining them. Automated tests cover permissions, overlapping requests, stale writes, and failures, with a stub model and a real Workers runtime. I then ran the seven scenarios on `gpt-6.1-sol` and read the traces. A later review looked for shortcuts and false success. I fixed the issues that changed authorization or outcomes and reran those tests.
+
+## Time, limitations, and next priorities
+
+Approximately 7 to 8 hours of active development, spread across two working days.
+
+All seven required scenarios were verified using real LLM executions, alongside deterministic tests for orchestration and permission boundaries. Broader conversational evaluation was limited by the timebox. Testing multi-turn context, ambiguous requests, unsupported questions, prompt-injection resilience, and response quality would be a priority before real user deployment.
+
+Conversational quality matters because it is what the person using the assistant actually experiences. A trace can be correct while the reply is still confusing, and that is the part the user sees.
+
+Identities are simulated. Policies are three short documents, matched by words, not embeddings. Embeddings and semantic retrieval would have been unnecessary complexity for a corpus this small. I would add them only if the documents grew enough that word matching stopped finding the right one. Nothing here is a deployed service. Still open: a prompt-injection fixture, failing the turn at the four-step cap, and a follow-up when a write has no target. A real deployment would replace the demo switch with authentication and add monitoring.
+
+## Setup and demonstration
+
+Node.js 22.12 or newer. Wrangler 4.160 will not start on an older Node.
+
+From the repository root:
 
 ```sh
 npm install
 cp .dev.vars.example .dev.vars
 ```
 
-Put the OpenAI API key in `.dev.vars`. The file is gitignored.
+Edit `.dev.vars` and set `OPENAI_API_KEY`. The example file contains only `OPENAI_API_KEY=replace-me`. `.dev.vars` is gitignored. Do not commit a real key. The React app never receives it.
 
-## Commands
+Install the frontend from `web/`:
 
 ```sh
-npm run typecheck
-npm test
-npm run test:live
+cd web
+npm install
+```
+
+Start the backend from the repository root. This one command runs the app Worker and the policy Worker together:
+
+```sh
 npm run dev
 ```
+
+The app listens on `http://localhost:8787`. Leave that process running.
 
 In a second terminal:
 
 ```sh
 cd web
-npm install
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173`. The page proxies `/messages` and `/session` to the worker on port 8787. Leave `npm run dev` running at the repository root while the page is open.
+Open `http://127.0.0.1:5173`. The page proxies `/messages` and `/session` to `http://127.0.0.1:8787`. Choose Alex or Jordan under Simulated identity. That choice sends the `x-demo-user` header. Reset session clears only that user's stored conversation, trace, and simulated resets.
 
-`npm test` uses a stub model and the real policy Worker. `npm run test:live` calls GPT-6.1 Sol inside workerd. `npm run dev` serves the app Worker and the policy Worker together.
+Checks that do not call the paid model, from the repository root:
 
-Frontend checks, from `web/`:
+```sh
+npm run typecheck
+npm test
+```
+
+`npm test` stubs the model and still runs on Workers, the Durable Object, and the policy Worker.
+
+From `web/`:
 
 ```sh
 npm run typecheck
@@ -44,16 +104,26 @@ npm test
 npm run build
 ```
 
-```sh
-curl -s -X POST http://localhost:8787/messages \
-  -H 'content-type: application/json' \
-  -H 'x-demo-user: alex' \
-  -d '{"message":"Is the company VPN service operational?","idempotencyKey":"vpn-1"}'
+`npm run test:live`, from the repository root, calls `gpt-6.1-sol` and spends API credit. It needs `OPENAI_API_KEY` in `.dev.vars`. It includes the seven scenarios below.
 
-curl -s -X POST http://localhost:8787/messages \
-  -H 'content-type: application/json' \
-  -H 'x-demo-user: alex' \
-  -d '{"message":"What does the leave approval policy say?","idempotencyKey":"leave-1"}'
+Use these prompts in the page, with the identity shown. The live tests send the same wording.
+
+| | Who | Prompt | What the trace should show |
+| --- | --- | --- | --- |
+| 1 | Alex | Why is my VPN failing, and what should I try? | IT loads the VPN skill, then calls `getServiceStatus`. No reset is stored. `docs/slice-skill-example.json` |
+| 2 | Alex | What does the leave approval policy say? | HR discovers tools and calls `searchPolicies`. The returned document is the leave policy. `docs/slice-hr-example.json` |
+| 3 | Alex | My VPN isn't connecting. Also, what is the leave approval policy? | IT and HR start independently, and one reply covers both questions. `docs/slice-concurrent-example.json` |
+| 4 | Jordan | Based on the equipment profile I'm entitled to under company policy, how should I configure my laptop? | HR finishes first and hands IT `equipmentProfile=standard-laptop`, not the policy body. `docs/slice-dependent-example.json` |
+| 5 | Alex | Please reset my password. | The orchestrator records permission denied. No specialist runs, and no reset row is stored. `docs/slice-reset-denied-example.json` |
+| 6 | Jordan | Ask the HR specialist to reset my password. Do not use IT. | HR runs, the reset tool is withheld, and IT is not called. `docs/slice-named-hr-example.json` |
+| 7 | Alex, live test only | Is the company VPN service operational? Also, what does the leave approval policy say? | Not available from the chat. The test arms the next Durable Object turn with an MCP error, then a timeout. HR completes unavailable. IT still returns the VPN status. `docs/slice-mcp-error-example.json`, `docs/slice-mcp-timeout-example.json` |
+
+To run only scenario 7:
+
+```sh
+npx vitest run --config vitest.live.config.ts -t "policy service"
 ```
 
-Reset that user's session with `POST /session/reset` and the same header. `GET /session` returns the stored histories and traces.
+Those two trace files keep the session id from the original run. The current test sends the prompt as Alex.
+
+What passed, and what is still open, is recorded in `docs/verification.md`.

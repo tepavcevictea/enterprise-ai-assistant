@@ -6,7 +6,7 @@ import type { HistoryRow, TraceEvent } from "./types";
 function event(partial: Pick<TraceEvent, "eventType" | "agentId"> & Partial<TraceEvent>): TraceEvent {
   return {
     traceId: partial.eventType,
-    sessionId: "taylor",
+    sessionId: "alex",
     turnId: "turn-1",
     timestamp: "2026-11-11T17:52:47.157Z",
     ...partial,
@@ -55,6 +55,15 @@ describe("partial success", () => {
   it("keeps an orchestrator denial without calling it a success", () => {
     const traces = [event({ eventType: "permission.denied", agentId: "orchestrator", outcome: "denied" })];
     expect(turnStatus(traces, "turn-1")).toBe("denied");
+  });
+
+  it("does not call an unsupported question a success", () => {
+    const traces = [
+      event({ eventType: "plan.validated", agentId: "orchestrator", outcome: "success" }),
+      event({ eventType: "reply.composed", agentId: "orchestrator", outcome: "unsupported" }),
+    ];
+    expect(turnStatus(traces, "turn-1")).toBe("unsupported");
+    expect(turnStatus(traces, "turn-1")).not.toBe("success");
   });
 });
 

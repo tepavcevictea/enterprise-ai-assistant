@@ -44,6 +44,9 @@ async function reset(user: string): Promise<void> {
 it("keeps the VPN procedure out of the IT prompt until loadSkill returns it", () => {
   const instructions = itInstructions();
   expect(instructions).toContain("vpn-troubleshooting");
+  expect(instructions).toContain("already retrieved");
+  expect(instructions).toContain("not in the available information");
+  expect(instructions).not.toContain("standard-laptop");
   expect(instructions).not.toContain(DEGRADED_NEXT_STEP);
   expect(instructions).not.toContain(PROCEDURE_LINE);
   const loaded = loadSkill({ userId: "alex", agent: "it", skillId: "vpn-troubleshooting" });
@@ -59,7 +62,7 @@ it("denies the skill to an agent without troubleshooting and does not grant serv
   const loaded = loadSkill({ userId: "jordan", agent: "it", skillId: "vpn-troubleshooting" });
   expect(loaded.ok).toBe(true);
   for (const agent of ["hr", "orchestrator"] as const) {
-    const denied = loadSkill({ userId: "taylor", agent, skillId: "vpn-troubleshooting" });
+    const denied = loadSkill({ userId: "jordan", agent, skillId: "vpn-troubleshooting" });
     expect(denied).toEqual({ ok: false, authorization: "denied", error: "denied" });
   }
   expect(loadSkill({ userId: "alex", agent: "it", skillId: "password-reset" })).toEqual({
@@ -67,7 +70,7 @@ it("denies the skill to an agent without troubleshooting and does not grant serv
     authorization: "denied",
     error: "unknown_skill",
   });
-  expect(runServiceStatus({ userId: "taylor", agent: "hr", serviceId: "vpn" })).toEqual({
+  expect(runServiceStatus({ userId: "jordan", agent: "hr", serviceId: "vpn" })).toEqual({
     ok: false,
     authorization: "denied",
     error: "denied",
@@ -146,6 +149,9 @@ it("does not give the planner a previous answer to copy", () => {
   expect(prompt).toContain("user: What does the leave approval policy say?");
   expect(prompt).not.toContain(LEAVE_BODY);
   expect(plannerInstructions(USERS.alex)).toContain("Do not copy a previous answer");
+  expect(plannerInstructions(USERS.alex)).toContain("outsideScope");
+  expect(plannerInstructions(USERS.alex)).not.toContain("weather");
+  expect(hrInstructions()).toContain("policy subject");
   expect(plannerInstructions(USERS.jordan)).toContain("role-specific entitlement");
   expect(hrInstructions()).toContain("unless the document says so");
 });

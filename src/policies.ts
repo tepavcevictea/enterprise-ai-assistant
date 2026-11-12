@@ -1,8 +1,8 @@
 import type { DemoUser } from "./identity";
 
-export type PolicyRole = "employee" | "it_support" | "hr_operations";
+export type PolicyRole = "employee" | "it_support";
 
-export type PolicyClassification = "general" | "hr-restricted";
+export type PolicyClassification = "general";
 
 export type PolicyDocument = {
   id: string;
@@ -15,10 +15,6 @@ export type PolicyDocument = {
 
 export const LEAVE_BODY =
   "Employees request leave through the HR portal. Managers approve planned leave.";
-
-export const RESTRICTED_TITLE = "Restricted offboarding procedure";
-
-export const RESTRICTED_BADGE = "NS-OFFBOARD-8841";
 
 export const EQUIPMENT_PROFILE = "standard-laptop";
 
@@ -47,24 +43,72 @@ export const POLICIES: readonly PolicyDocument[] = [
     body: "New employees complete HR onboarding before their manager assigns equipment.",
     classification: "general",
   },
-  {
-    id: "offboarding",
-    version: "2026-01",
-    title: RESTRICTED_TITLE,
-    body: `HR Operations only: collect badge ${RESTRICTED_BADGE} and disable accounts within one day.`,
-    classification: "hr-restricted",
-  },
 ];
 
 export function policyRole(role: DemoUser["role"]): PolicyRole {
-  if (role === "Employee") return "employee";
-  if (role === "IT Support") return "it_support";
-  return "hr_operations";
+  return role === "Employee" ? "employee" : "it_support";
 }
 
 export function canReadPolicy(role: PolicyRole, policy: PolicyDocument): boolean {
-  return policy.classification === "general" || role === "hr_operations";
+  return (role === "employee" || role === "it_support") && policy.classification === "general";
 }
+
+const DETAIL_FILLERS = new Set([
+  "also",
+  "asked",
+  "asking",
+  "check",
+  "describe",
+  "determine",
+  "ask",
+  "asks",
+  "explain",
+  "find",
+  "finds",
+  "found",
+  "give",
+  "given",
+  "gives",
+  "help",
+  "look",
+  "looking",
+  "looks",
+  "read",
+  "reads",
+  "said",
+  "says",
+  "show",
+  "shown",
+  "shows",
+  "include",
+  "includes",
+  "just",
+  "know",
+  "like",
+  "many",
+  "more",
+  "much",
+  "need",
+  "okay",
+  "only",
+  "please",
+  "really",
+  "report",
+  "retrieve",
+  "some",
+  "specify",
+  "specified",
+  "state",
+  "states",
+  "still",
+  "tell",
+  "tells",
+  "told",
+  "want",
+  "well",
+  "whether",
+  "yeah",
+]);
 
 const SEARCH_STOP_WORDS = new Set([
   "about",
@@ -117,9 +161,44 @@ export function authorizedCopies(role: PolicyRole, value: unknown): PolicyDocume
 
 export function renderPolicies(documents: readonly PolicyDocument[]): string {
   if (documents.length === 0) return "No matching policy was found.";
-  return documents
-    .map((policy) => `${policy.title} (${policy.id}, version ${policy.version})\n${policy.body}`)
-    .join("\n\n");
+  return documents.map((policy) => `${policy.title}. ${policy.body}`).join("\n\n");
+}
+
+export function citedPolicy(priorText: string): PolicyDocument | undefined {
+  let found: { policy: PolicyDocument; index: number } | undefined;
+  for (const policy of POLICIES) {
+    const index = priorText.lastIndexOf(policy.title);
+    if (index < 0 || !priorText.includes(policy.body)) continue;
+    if (found === undefined || index > found.index) found = { policy, index };
+  }
+  return found?.policy;
+}
+
+export function describePolicyAnswer(documents: readonly PolicyDocument[], question: string): string {
+  const rendered = renderPolicies(documents);
+  const missing = missingTerms(question, documents);
+  if (missing.length === 0) return rendered;
+  const detail = missing.length > 3 ? "the extra detail in your question" : phrase(missing);
+  return `${rendered}\n\nThe retrieved policy does not specify ${detail}.`;
+}
+
+function missingTerms(question: string, documents: readonly PolicyDocument[]): string[] {
+  if (documents.length === 0) return [];
+  const text = documents.map((policy) => `${policy.title}\n${policy.body}`).join("\n").toLowerCase();
+  const seen = new Set<string>();
+  const missing: string[] = [];
+  for (const word of question.toLowerCase().split(/[^a-z0-9]+/)) {
+    if (word.length < 4 || SEARCH_STOP_WORDS.has(word) || DETAIL_FILLERS.has(word) || seen.has(word)) continue;
+    seen.add(word);
+    if (!text.includes(word)) missing.push(word);
+  }
+  return missing;
+}
+
+function phrase(terms: string[]): string {
+  if (terms.length === 1) return terms[0] ?? "";
+  const last = terms[terms.length - 1] ?? "";
+  return `${terms.slice(0, -1).join(", ")} or ${last}`;
 }
 
 function samePolicy(policy: PolicyDocument, value: unknown): boolean {

@@ -9,6 +9,7 @@ import {
   UNAVAILABLE_POLICY,
   type PolicyConsultation,
 } from "./mcp/policy-client";
+import { citedPolicy, describePolicyAnswer, policyRole, renderPolicies, visiblePolicies } from "./policies";
 import type { McpMode, PolicyBinding } from "./mcp/pinned-fetch";
 import { PLAN_MODEL } from "./plan";
 import type { TraceEvent } from "./trace";
@@ -25,6 +26,7 @@ export function hrInstructions(): string {
     "When the assignment needs company policy, call searchPolicies once. Use a few words that name the policy subject, such as leave approval or equipment profile. Do not include the employee's name or role in the query.",
     "Use only the documents the tool returns. Do not invent a policy, a title, or a procedure.",
     "If a document states one company equipment profile, report that profile. Do not describe it as specific to the employee's role unless the document says so.",
+    "When the assignment asks for a detail of a policy named in the earlier conversation, search for that policy subject. Do not search only for the missing detail.",
     "You have no IT service-status tool and no password-reset tool.",
   ].join("\n");
 }
@@ -42,6 +44,7 @@ export async function runHrSpecialist(input: {
   binding: PolicyBinding | undefined;
   user: DemoUser;
   objective: string;
+  message?: string;
   history: { agent: string; body: string }[];
   notes: { information: string; value: string }[];
   mode?: McpMode;
@@ -49,12 +52,13 @@ export async function runHrSpecialist(input: {
   trace: (event: TraceEvent) => void;
   base: { sessionId: string; turnId: string; taskId: string };
 }): Promise<HrResult> {
-  if (input.binding === undefined) {
+  const binding = input.binding;
+  if (binding === undefined) {
     return { outcome: "unavailable", text: UNAVAILABLE_POLICY, report: UNAVAILABLE_POLICY };
   }
   if (input.transport === "direct") {
     const consultation = await executePolicyRead({
-      binding: input.binding,
+      binding,
       user: input.user,
       agent: "hr",
       query: input.objective,
@@ -63,7 +67,22 @@ export async function runHrSpecialist(input: {
       trace: input.trace,
       base: input.base,
     });
-    return fromConsultation(consultation);
+    const recovered = await recoverPolicy(consultation, input, (query) =>
+      executePolicyRead({
+        binding,
+        user: input.user,
+        agent: "hr",
+        query,
+        mode: input.mode,
+        signal: input.signal,
+        trace: input.trace,
+        base: input.base,
+      }),
+    );
+    if (recovered.consultation === undefined) {
+      return { outcome: "failed", text: MISSING_CALL, report: MISSING_CALL };
+    }
+    return presentPolicy(recovered.consultation, input, recovered.usedPrior);
   }
 
   const key = input.apiKey?.trim();
@@ -71,7 +90,7 @@ export async function runHrSpecialist(input: {
     return { outcome: "failed", text: "The HR specialist could not be called.", report: "The HR specialist could not be called." };
   }
   const prepared = await preparePolicyCall({
-    binding: input.binding,
+    binding,
     user: input.user,
     agent: "hr",
     mode: input.mode,
@@ -82,10 +101,16 @@ export async function runHrSpecialist(input: {
   if (!prepared.ok) return fromConsultation(prepared.consultation);
 
   let consultation: PolicyConsultation | undefined;
+  let usedPrior = false;
   try {
     const prior = input.history
       .filter((row) => row.agent === "hr")
       .slice(-8)
+      .map((row) => row.body)
+      .join("\n");
+    const earlier = input.history
+      .filter((row) => row.agent === "orchestrator" && row.body.startsWith("user: "))
+      .slice(-4)
       .map((row) => row.body)
       .join("\n");
     const notes = input.notes.map((note) => `${note.information}: ${note.value}`).join("\n");
@@ -96,7 +121,7 @@ export async function runHrSpecialist(input: {
       providerOptions: { openai: { reasoningEffort: "low", store: false } },
       stopWhen: stepCountIs(4),
       system: hrInstructions(),
-      prompt: [`Assignment: ${input.objective}`, prior, notes].filter((part) => part !== "").join("\n\n"),
+      prompt: [`Assignment: ${input.objective}`, earlier === "" ? "" : `Earlier user messages, for the subject only:\n${earlier}`, prior, notes].filter((part) => part !== "").join("\n\n"),
       tools: {
         searchPolicies: tool({
           description: "Search fictional company policies the signed-in user is allowed to read.",
@@ -118,13 +143,94 @@ export async function runHrSpecialist(input: {
         }),
       },
     });
+    const recovered = await recoverPolicy(consultation, input, (query) =>
+      prepared.prepared.invoke(query, AbortSignal.any([input.signal, AbortSignal.timeout(10_000)])),
+    );
+    consultation = recovered.consultation;
+    usedPrior = recovered.usedPrior;
   } finally {
     await prepared.prepared.close();
   }
   if (consultation === undefined) {
     return { outcome: "failed", text: MISSING_CALL, report: MISSING_CALL };
   }
-  return fromConsultation(consultation);
+  return presentPolicy(consultation, input, usedPrior);
+}
+
+async function recoverPolicy(
+  consultation: PolicyConsultation | undefined,
+  input: { user: DemoUser; objective: string; message?: string; history: { agent: string; body: string }[] },
+  retry: (query: string) => Promise<PolicyConsultation>,
+): Promise<{ consultation: PolicyConsultation | undefined; usedPrior: boolean }> {
+  if (consultation !== undefined && (consultation.outcome !== "success" || consultation.documents.length > 0)) {
+    return { consultation, usedPrior: false };
+  }
+  const next = nextPolicyQuery(input);
+  if (next === undefined) return { consultation, usedPrior: false };
+  const again = await retry(next.query);
+  if (again.outcome === "success" && again.documents.length > 0) {
+    return { consultation: again, usedPrior: next.usedPrior };
+  }
+  return { consultation: consultation ?? again, usedPrior: false };
+}
+
+function nextPolicyQuery(input: {
+  user: DemoUser;
+  objective: string;
+  message?: string;
+  history: { agent: string; body: string }[];
+}): { query: string; usedPrior: boolean } | undefined {
+  const role = policyRole(input.user.role);
+  const message = input.message?.trim() ?? "";
+  const objective = input.objective.trim();
+  if (message !== "" && message !== objective && visiblePolicies(role, message).length > 0) {
+    return { query: message, usedPrior: false };
+  }
+  const prior = input.history
+    .filter((row) => row.agent === "hr")
+    .map((row) => row.body)
+    .join("\n");
+  const cited = citedPolicy(prior);
+  if (cited !== undefined && cited.title.toLowerCase() !== objective.toLowerCase()) {
+    return { query: cited.title, usedPrior: true };
+  }
+  return undefined;
+}
+
+function presentPolicy(
+  consultation: PolicyConsultation,
+  input: { user: DemoUser; objective: string; message?: string; history: { agent: string; body: string }[] },
+  usedPrior: boolean,
+): HrResult {
+  const result = fromConsultation(consultation);
+  if (consultation.outcome !== "success" || consultation.documents.length === 0) return result;
+  const question = followUpQuestion(input, consultation.documents, usedPrior);
+  if (question === undefined) {
+    const report = renderPolicies(consultation.documents);
+    return { ...result, text: report, report };
+  }
+  const report = describePolicyAnswer(consultation.documents, question);
+  return { ...result, text: report, report };
+}
+
+function followUpQuestion(
+  input: { user: DemoUser; message?: string; history: { agent: string; body: string }[] },
+  documents: PolicyConsultation["documents"],
+  usedPrior: boolean,
+): string | undefined {
+  const message = input.message?.trim() ?? "";
+  const previous = input.history
+    .filter((row) => row.agent === "orchestrator" && row.body.startsWith("user: "))
+    .slice(-1)
+    .map((row) => row.body.slice("user: ".length))
+    .at(0);
+  const matched =
+    message !== "" &&
+    visiblePolicies(policyRole(input.user.role), message).some((policy) => documents.some((document) => document.id === policy.id));
+  if ((matched && !usedPrior) || (previous === undefined && !usedPrior)) return undefined;
+  const current = message !== "" ? message : "";
+  const question = [previous, current].filter((part) => part !== undefined && part !== "").join("\n");
+  return question === "" ? undefined : question;
 }
 
 function fromConsultation(consultation: PolicyConsultation): HrResult {

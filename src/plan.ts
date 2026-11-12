@@ -10,6 +10,11 @@ const taskActionSchema = z
   );
 
 export const planSchema = z.object({
+  outsideScope: z
+    .boolean()
+    .describe(
+      "True only when no part of the request is about IT service status, troubleshooting, password reset, company policy, leave, or equipment. False when any part belongs to a specialist.",
+    ),
   onlySpecialist: z
     .enum(["it", "hr"])
     .nullable()
@@ -61,6 +66,7 @@ export type PlanTask = {
 export type Plan = {
   tasks: PlanTask[];
   onlySpecialist?: "it" | "hr" | null;
+  outsideScope?: boolean;
 };
 
 export type PlanErrorCode =
@@ -96,7 +102,12 @@ export function validatePlan(input: unknown): PlanValidation {
   }
   const tasks: unknown = input.tasks;
   if (!Array.isArray(tasks)) return { ok: false, errors: ["invalid_task"] };
-  if (tasks.length < 1 || tasks.length > 4) errors.add("task_count");
+  const outsideScope = readOutsideScope(input, errors);
+  if (outsideScope) {
+    if (tasks.length !== 0) errors.add("invalid_task");
+  } else if (tasks.length < 1 || tasks.length > 4) {
+    errors.add("task_count");
+  }
 
   const parsed: PlanTask[] = [];
   const ids = new Set<string>();
@@ -129,7 +140,7 @@ export function validatePlan(input: unknown): PlanValidation {
   }
 
   const onlySpecialist = readOnlySpecialist(input, errors);
-  const plan: Plan = { tasks: parsed, onlySpecialist };
+  const plan: Plan = { tasks: parsed, onlySpecialist, outsideScope };
   if (!executionGate(plan).ok) errors.add("named_specialist");
   if (hasCycle(parsed)) errors.add("cycle");
   if (errors.size > 0) return { ok: false, errors: [...errors] };
@@ -144,6 +155,15 @@ export function executionGate(plan: Plan): { ok: true } | { ok: false; error: "n
   const only = plan.onlySpecialist ?? null;
   if (only === null) return { ok: true };
   return plan.tasks.every((task) => task.specialist === only) ? { ok: true } : { ok: false, error: "named_specialist" };
+}
+
+function readOutsideScope(input: object, errors: Set<PlanErrorCode>): boolean {
+  if (!("outsideScope" in input) || input.outsideScope === undefined || input.outsideScope === null || input.outsideScope === false) {
+    return false;
+  }
+  if (input.outsideScope === true) return true;
+  errors.add("invalid_task");
+  return false;
 }
 
 function readOnlySpecialist(input: object, errors: Set<PlanErrorCode>): "it" | "hr" | null {
@@ -239,6 +259,9 @@ export function plannerInstructions(identity: DemoUser): string {
     `Signed-in user: ${identity.id}, role ${identity.role}. The user's role does not choose the specialist.`,
     "Rules:",
     "- Assign only it or hr. Use at most four tasks.",
+    "- If no part of the request is about IT service status, troubleshooting, password reset, company policy, leave, or equipment, set outsideScope to true and return no tasks. Do not invent a specialist task for general knowledge or any other subject.",
+    "- Set outsideScope to false when any part belongs to a specialist.",
+    "- When the current message asks for a detail of a subject in an earlier user message, assign the specialist for that subject. The objective names the earlier subject and the detail being asked. It does not answer the detail.",
     "- If the user explicitly assigns a part to a specialist, or explicitly rules a specialist out, follow that for every part the instruction covers. Do not move a covered part to the specialist who has the capability, and do not add a ruled-out specialist. An instruction that does not cover a part does not change that part.",
     "- When the user names no specialist, assign each user-facing part by subject.",
     "- id is a unique short lowercase string.",
@@ -265,5 +288,6 @@ export function repairInstructions(identity: DemoUser): string {
     plannerInstructions(identity),
     "The previous plan was rejected by application code. Return one corrected plan for the same request.",
     "Fix the listed errors. Do not add a specialist the user ruled out. Do not answer the user.",
+    "A request outside IT and HR scope has outsideScope true and an empty task list.",
   ].join("\n");
 }

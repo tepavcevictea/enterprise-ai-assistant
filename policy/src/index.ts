@@ -18,7 +18,7 @@ function modeFrom(request: Request, env: PolicyEnv): McpMode {
 
 function roleFromAuth(): PolicyRole | undefined {
   const role = getMcpAuthContext()?.props.role;
-  if (role === "employee" || role === "it_support" || role === "hr_operations") return role;
+  if (role === "employee" || role === "it_support") return role;
   return undefined;
 }
 

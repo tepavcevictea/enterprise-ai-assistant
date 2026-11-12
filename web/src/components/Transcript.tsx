@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { agentLabel, outcomeLabel, statusLabel, turnStatus, specialistOutcomes } from "../present";
 import type { ConversationTurn } from "../present";
 import type { PasswordResetRow, TraceEvent } from "../types";
@@ -7,9 +8,15 @@ export function Transcript(props: {
   traces: TraceEvent[];
   resets: PasswordResetRow[];
   selectedTurnId: string | null;
+  pending: { question: string; failed: boolean } | null;
   onSelect: (turnId: string) => void;
 }) {
-  if (props.turns.length === 0) {
+  const pendingRef = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    pendingRef.current?.scrollIntoView({ block: "nearest" });
+  }, [props.pending, props.turns.length]);
+
+  if (props.turns.length === 0 && props.pending === null) {
     return (
       <div className="empty-thread">
         <p>No messages are stored for this identity.</p>
@@ -26,11 +33,22 @@ export function Transcript(props: {
         const selected = turn.turnId === props.selectedTurnId;
         return (
           <li key={turn.turnId}>
-            <article className={selected ? `turn status-${status} selected` : `turn status-${status}`}>
-              <button type="button" className="turn-select" onClick={() => props.onSelect(turn.turnId)} aria-pressed={selected}>
+            <article
+              className={selected ? `turn status-${status} selected` : `turn status-${status}`}
+              role="button"
+              tabIndex={0}
+              aria-pressed={selected}
+              onClick={() => props.onSelect(turn.turnId)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                props.onSelect(turn.turnId);
+              }}
+            >
+              <div className="question-block">
                 <span className="speaker">You</span>
                 <p className="question">{turn.question}</p>
-              </button>
+              </div>
               <div className="answer">
                 <div className="answer-heading">
                   <span className="speaker">Assistant</span>
@@ -47,12 +65,33 @@ export function Transcript(props: {
                     ))}
                   </dl>
                 ) : null}
-                {reset !== undefined ? <p className="reset-note">{reset.detail}</p> : null}
+                {reset !== undefined && !turn.reply.includes(reset.detail) ? (
+                  <p className="reset-note">{reset.detail}</p>
+                ) : null}
               </div>
             </article>
           </li>
         );
       })}
+      {props.pending !== null ? (
+        <li ref={pendingRef}>
+          <article className="turn pending">
+            <div className="pending-question">
+              <span className="speaker">You</span>
+              <p className="question">{props.pending.question}</p>
+            </div>
+            {props.pending.failed ? null : (
+              <div className="answer">
+                <span className="speaker">Assistant</span>
+                <p className="pending-line" role="status">
+                  <span className="pending-dot" aria-hidden="true" />
+                  Working on your question.
+                </p>
+              </div>
+            )}
+          </article>
+        </li>
+      ) : null}
     </ol>
   );
 }

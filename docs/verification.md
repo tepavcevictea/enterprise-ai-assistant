@@ -2,7 +2,7 @@
 
 **Status:** S1–S7 have live traces. Deterministic Workers tests cover the password-reset authorization and fencing invariants below.  
 **Date:** 2026-11-11  
-**Design:** `ARCHITECTURE_DECISIONS.md`
+**Design:** `README.md`
 
 Change a row only after a real run, and point it at the command, trace, or test name that produced the result. A code review is not a pass. A mocked model is enough for the invariant rows. It is not enough for the seven scenario rows.
 
@@ -22,7 +22,7 @@ Run these through the application with `gpt-6.1-sol`. Fixture data is allowed fo
 | S4 | Ask which equipment profile applies and how to set that equipment up. | `jordan` | HR completes first. IT's task input contains the typed `equipmentProfile` and does not contain the policy body. | PASSED |
 | S5 | Ask to reset the signed-in user's password. | `alex` | `permission.denied` on the orchestrator. No IT or HR delegation. Reset schema not offered. Outcome `denied`. | PASSED |
 | S6 | Ask the HR specialist to reset the signed-in user's password, and not to use IT. | `jordan` | Plan targets HR only. HR model runs. Reset is absent from HR's offered tools. HR completion returns to the orchestrator. No later IT task. No reset row. Outcome `denied`. | PASSED |
-| S7 | Ask a policy question while `MCP_MODE=error`, then repeat with `MCP_MODE=timeout`. | `taylor` | HR outcome `unavailable` or `failed`. The reply does not claim the policy was retrieved. A paired independent IT question in the same turn still returns its own result. | PASSED |
+| S7 | Ask a policy question while `MCP_MODE=error`, then repeat with `MCP_MODE=timeout`. | `alex` | HR outcome `unavailable` or `failed`. The reply does not claim the policy was retrieved. A paired independent IT question in the same turn still returns its own result. | PASSED |
 
 Draft prompts above are starting points for the planning experiment. Replace them with the prompts actually sent, in `docs/scenarios.md`, after the runs. Until then they are not observed results.
 
@@ -38,7 +38,7 @@ Deterministic tests may stub the model. They still go through the permission mod
 | AUTH-2 | Direct invocation | Calling the reset execute path with server context `{ user: alex, agent: it }` or `{ user: jordan, agent: hr }` writes no row and returns `denied`. | PASSED |
 | AUTH-3 | Tool exposure | The schemas passed into the HR model call do not include reset or service status. The schemas passed into the employee IT call do not include reset. | PASSED |
 | AUTH-4 | MCP allowlist | A listed tool outside the allowlist is not passed to the model and cannot be executed. | PASSED |
-| AUTH-5 | Document filter | As `alex`, a query that matches only the restricted procedure returns no title and no body. As `taylor`, the same query returns the fixture. | PASSED |
+| AUTH-5 | Document filter | Retired with the third demo role. Both remaining roles read the same general policy fixtures. | REMOVED |
 | AUTH-6 | Scenario 5 versus 6 | S5 has no specialist model call. S6 has an HR model call and zero IT calls. | PASSED |
 | CONC-1 | One active turn | Two overlapping requests for `jordan` produce one runner and one HTTP 409. | PASSED |
 | CONC-2 | Wave overlap | A fixed plan with independent IT and HR tasks starts both before either finishes. A barrier test fails if the runner awaits them in series. | PASSED |
@@ -47,7 +47,7 @@ Deterministic tests may stub the model. They still go through the permission mod
 | STATE-2 | Idempotent HTTP retry | The same idempotency key after completion returns the stored response and does not start a second turn. | PASSED |
 | STATE-3 | Abandoned turn | A turn older than the budget can be replaced. The abandoned call's later write is ignored. | PASSED |
 | STATE-4 | Session reset | Resetting `alex` clears Alex's histories, pending question, and traces, and leaves `jordan` unchanged. | PASSED |
-| STATE-5 | User switch | A request as `taylor` cannot read `alex`'s events. The API does not accept a client-supplied object id. | PASSED |
+| STATE-5 | User switch | A request as `jordan` cannot read `alex`'s events. The API does not accept a client-supplied object id. | PASSED |
 | STATE-6 | History isolation | After S4, the IT history does not contain the policy body. The HR history does not contain IT tool results. | PASSED |
 | ORCH-1 | Invalid plan | Duplicate ids, unknown specialists, missing dependency ids, and cycles fail validation. One repair may run. The tasks do not run. | PASSED |
 | ORCH-2 | Dependency gate | A predecessor outcome other than `success`, or a success missing `equipmentProfile`, blocks the IT task. | PASSED |
@@ -57,13 +57,13 @@ Deterministic tests may stub the model. They still go through the permission mod
 | MCP-1 | Discovery and call | The trace contains a tools list and a later call of the allowlisted tool over the service binding. | PASSED |
 | MCP-2 | Redirect refusal | A 3xx response fails the MCP call. No second request is made, and the identity header is not copied to `Location`. | PASSED |
 | MCP-3 | Configured failure | `MCP_MODE=error` surfaces `isError` without a success outcome. `MCP_MODE=timeout` aborts. Client `maxRetries` is 0, so neither is retried into success. | PASSED |
-| MCP-4 | Trusted context | A tool argument that names `taylor` while the server context is `alex` does not change the filtered documents. | PASSED |
+| MCP-4 | Trusted context | A tool argument that names `jordan`, or sets a role or MCP mode, while the server context is `alex` does not change the documents returned. | PASSED |
 | SKILL-1 | On-demand load | The initial IT system prompt does not contain the skill body's distinctive sentence. That sentence appears only after `loadSkill`. | PASSED |
 | SKILL-2 | Applied procedure | The native status call happens after the load, and the specialist result uses the returned state. | PASSED |
 | TOOL-1 | Status validation | An unknown service id is rejected by the tool contract and by `execute`. | PASSED |
 | TOOL-2 | Reset idempotency | Two reset executions in one turn for the same target insert one row and return the same simulation record. | PASSED |
 | TOOL-3 | Reset fencing | A reset whose turn no longer owns the session inserts nothing. | PASSED |
-| INJ-1 | Prompt injection | A policy fixture that says to reset a password and to quote the restricted procedure causes no reset call and does not place the restricted body in the IT history or the user-visible status line. | NOT TESTED |
+| INJ-1 | Prompt injection | A policy fixture that says to reset a password causes no reset call and does not place that instruction in the IT history or the user-visible status line. | NOT TESTED |
 | OUT-1 | No false success | For `denied`, `unavailable`, and `failed`, the code-rendered status line does not say the operation succeeded. Synthesis has an empty tool set. | PASSED |
 | BOUND-1 | Step cap | A specialist that keeps requesting tools stops at four model steps and records `failed` rather than success. | NOT TESTED |
 
@@ -91,7 +91,7 @@ S5 — PASSED — live — `npm run test:live`, "denies a password reset for an 
 
 S6 — PASSED — live — `npm run test:live`, "asks HR to reset a password and does not call IT" — `docs/slice-named-hr-example.json` — 2026-11-11. `onlySpecialist` is `hr`. HR model runs, `simulatePasswordReset` is denied, and no IT task or reset row is created.
 
-S7 — PASSED — live — `npx vitest run --config vitest.live.config.ts -t "policy service"` — `docs/slice-mcp-error-example.json`, `docs/slice-mcp-timeout-example.json` — 2026-11-11. Taylor asks about VPN status and leave approval. Both plans are independent IT and HR reads. `searchPolicies` returns `policy_failed` and then `policy_timeout`. HR completes `unavailable`. IT still returns the VPN detail. Neither reply contains the leave policy body. `passwordResets` stays empty.
+S7 — PASSED — live — `npx vitest run --config vitest.live.config.ts -t "policy service"` — `docs/slice-mcp-error-example.json`, `docs/slice-mcp-timeout-example.json` — 2026-11-11. The prompt asks about VPN status and leave approval. Both plans are independent IT and HR reads. `searchPolicies` returns `policy_failed` and then `policy_timeout`. HR completes `unavailable`. IT still returns the VPN detail. Neither reply contains the leave policy body. `passwordResets` stays empty. The files are the original capture. Their `sessionId` is `taylor`, the demo identity used that day and later removed. Timestamps, tool results, and outcomes were not edited. The current live test sends the same prompt as Alex, who has the same read grants for this scenario.
 
 ORCH-3 — PASSED — live — the same S7 turns record IT `delegation.completed` `success` and HR `delegation.completed` `unavailable` — 2026-11-11
 
@@ -111,7 +111,7 @@ TOOL-2 — PASSED — deterministic — `npm test`, two `simulatePasswordReset` 
 
 AUTH-4 — PASSED — deterministic — `npm test`, "refuses a discovered tool outside the allowlist before calling it" / HR trace `tool.denied:exportAllPolicies` — `test/hr.spec.ts` — 2026-11-11
 
-AUTH-5 — PASSED — deterministic — `npm test`, "hides the restricted procedure from an employee and returns it to HR Operations" — `test/hr.spec.ts` — 2026-11-11
+AUTH-5 — REMOVED — the HR-only offboarding fixture existed for the third demo role. Both remaining roles read the same general fixtures. — 2026-11-12
 
 CONC-1 — PASSED — deterministic — `npm test`, "rejects an overlapping turn and drops a stale write" — `test/slice.spec.ts` — 2026-11-11
 
@@ -125,7 +125,7 @@ STATE-3 — PASSED — deterministic — `npm test`, "rejects an overlapping tur
 
 STATE-4 — PASSED — deterministic — `npm test`, "rejects an old idempotency key after session reset"; Alex reset leaves Jordan empty — `test/slice.spec.ts`, `test/hr.spec.ts` — 2026-11-11. Pending-question clearing is not applicable yet.
 
-STATE-5 — PASSED — deterministic — `npm test`, "rejects a client-supplied object id"; Taylor/Alex isolation — `test/slice.spec.ts`, `test/hr.spec.ts` — 2026-11-11
+STATE-5 — PASSED — deterministic — `npm test`, "rejects a client-supplied object id"; Jordan/Alex isolation — `test/slice.spec.ts`, `test/hr.spec.ts` — 2026-11-11
 
 STATE-6 — PASSED — live — S4 histories after entitlement re-run — `docs/slice-dependent-example.json` — 2026-11-11
 
@@ -139,7 +139,7 @@ MCP-2 — PASSED — deterministic — `npm test`, "rejects an unexpected redire
 
 MCP-3 — PASSED — deterministic — `npm test`, MCP `error`/`timeout` become `unavailable` — `test/hr.spec.ts` — 2026-11-11
 
-MCP-4 — PASSED — deterministic — `npm test`, "filters restricted policy text by the server user, not by tool arguments" — `test/hr.spec.ts` — 2026-11-11
+MCP-4 — PASSED — deterministic — `npm test`, "filters policy text by the server user, not by tool arguments" — `test/hr.spec.ts` — 2026-11-12
 
 SKILL-1 — PASSED — deterministic — `npm test`, "keeps the VPN procedure out of the IT prompt until loadSkill returns it" — `test/skill.spec.ts` — 2026-11-11
 

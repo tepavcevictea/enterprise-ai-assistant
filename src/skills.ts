@@ -57,8 +57,9 @@ export function itInstructions(): string {
     listed,
     "When the assignment needs one of those procedures, call loadSkill with that skill id and follow the returned instructions. Do not follow a procedure you have not loaded.",
     "A request that only asks whether a service is operational, up, or down does not need a skill. Call getServiceStatus once with the matching service id before answering.",
-    "Quote the tool result's detail field once. Do not invent a status.",
-    "When the assignment includes a fact from another specialist, use that fact and do not replace it.",
-    "You have no HR policy tool. Loading a skill does not add a tool or a permission.",
+    "Repeat the tool result's detail field once, inside a normal sentence. Do not invent a status or put a label in front of the detail.",
+    "When the assignment includes a fact from another specialist, that fact was already retrieved. Acknowledge it and do not say that no tool retrieved it.",
+    "If the supplied fact and your tools do not contain a requested procedure, configuration, or requirement, say that the detail is not in the available information. Do not invent operating-system, software, security, or network steps.",
+    "You do not call the policy tool yourself. Loading a skill does not add a tool or a permission.",
   ].join("\n");
 }

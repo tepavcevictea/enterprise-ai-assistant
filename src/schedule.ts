@@ -1,6 +1,6 @@
 import type { PlanTask } from "./plan";
 
-export type Outcome = "success" | "needs_input" | "denied" | "unavailable" | "failed";
+export type Outcome = "success" | "needs_input" | "denied" | "unavailable" | "failed" | "unsupported";
 
 export type TaskResult = {
   taskId: string;

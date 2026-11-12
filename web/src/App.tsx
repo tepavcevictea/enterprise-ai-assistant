@@ -16,11 +16,13 @@ function storedUser(): DemoUserId {
 
 export function App() {
   const [userId, setUserId] = useState<DemoUserId>(storedUser);
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
-  const [phase, setPhase] = useState<"loading" | "ready" | "sending">("loading");
+  const [sessions, setSessions] = useState<Partial<Record<DemoUserId, Snapshot>>>({});
+  const [phase, setPhase] = useState<"ready" | "sending" | "resetting">("ready");
   const [error, setError] = useState<string | null>(null);
   const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [pending, setPending] = useState<{ question: string; failed: boolean } | null>(null);
+  const snapshot = sessions[userId] ?? null;
   const person = DEMO_USERS.find((user) => user.id === userId) ?? DEMO_USERS[0];
   const turns = useMemo(() => conversationTurns(snapshot?.histories ?? []), [snapshot]);
   const selectedTurn = turns.find((turn) => turn.turnId === selectedTurnId) ?? turns[turns.length - 1] ?? null;
@@ -33,23 +35,31 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false;
-    setPhase("loading");
-    setSnapshot(null);
-    setSelectedTurnId(null);
+    for (const user of DEMO_USERS) {
+      readSession(user.id)
+        .then((next) => {
+          if (!cancelled) setSessions((current) => ({ ...current, [user.id]: next }));
+        })
+        .catch(() => undefined);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
     setError(null);
     setConfirmReset(false);
+    setPending(null);
     readSession(userId)
       .then((next) => {
         if (cancelled) return;
-        setSnapshot(next);
-        setSelectedTurnId(null);
-        setPhase("ready");
+        setSessions((current) => ({ ...current, [userId]: next }));
       })
       .catch((reason: unknown) => {
         if (cancelled) return;
-        setSnapshot(null);
         setError(errorText(reason));
-        setPhase("ready");
       });
     return () => {
       cancelled = true;
@@ -60,7 +70,7 @@ export function App() {
     if (snapshot?.activeTurn == null || phase === "sending") return;
     const timer = window.setInterval(() => {
       readSession(userId)
-        .then((next) => setSnapshot(next))
+        .then((next) => setSessions((current) => ({ ...current, [userId]: next })))
         .catch(() => undefined);
     }, 3_000);
     return () => window.clearInterval(timer);
@@ -68,28 +78,31 @@ export function App() {
 
   async function onSend(message: string) {
     setPhase("sending");
+    setPending({ question: message, failed: false });
     setError(null);
     setConfirmReset(false);
     try {
       const response = await sendMessage(userId, message, crypto.randomUUID());
       const next = await readSession(userId);
-      setSnapshot(next);
+      setSessions((current) => ({ ...current, [userId]: next }));
       setSelectedTurnId(response.turnId);
+      setPending(null);
     } catch (reason) {
       setError(errorText(reason));
+      setPending({ question: message, failed: true });
       const next = await readSession(userId).catch(() => null);
-      if (next !== null) setSnapshot(next);
+      if (next !== null) setSessions((current) => ({ ...current, [userId]: next }));
     } finally {
       setPhase("ready");
     }
   }
 
   async function onReset() {
-    setPhase("loading");
+    setPhase("resetting");
     setError(null);
     try {
       const next = await resetSession(userId);
-      setSnapshot(next);
+      setSessions((current) => ({ ...current, [userId]: next }));
       setSelectedTurnId(null);
       setConfirmReset(false);
     } catch (reason) {
@@ -133,31 +146,28 @@ export function App() {
       </header>
       <main>
         <section className="conversation" aria-label="Conversation">
-          {snapshot?.activeTurn != null ? (
-            <p className="banner" role="status">
-              A turn is still running for {person.name}. The stored history will update when it finishes.
-            </p>
-          ) : null}
-          {error !== null ? (
-            <p className="banner error" role="alert">
-              {error}
-            </p>
-          ) : null}
-          {phase === "loading" && snapshot === null ? <p className="banner">Loading the stored conversation…</p> : null}
-          {phase === "sending" ? (
-            <p className="banner" role="status">
-              Working with the specialists. The question stays disabled until this turn finishes.
-            </p>
-          ) : null}
-          {snapshot !== null ? (
-            <Transcript
-              turns={turns}
-              traces={snapshot.traces}
-              resets={snapshot.passwordResets}
-              selectedTurnId={selectedTurn?.turnId ?? null}
-              onSelect={setSelectedTurnId}
-            />
-          ) : null}
+          <div className="thread-scroll">
+            {snapshot?.activeTurn != null ? (
+              <p className="banner" role="status">
+                A turn is still running for {person.name}. The stored history will update when it finishes.
+              </p>
+            ) : null}
+            {error !== null ? (
+              <p className="banner error" role="alert">
+                {error}
+              </p>
+            ) : null}
+            {snapshot !== null || pending !== null ? (
+              <Transcript
+                turns={turns}
+                traces={snapshot?.traces ?? []}
+                resets={snapshot?.passwordResets ?? []}
+                selectedTurnId={selectedTurn?.turnId ?? null}
+                pending={pending}
+                onSelect={setSelectedTurnId}
+              />
+            ) : null}
+          </div>
           <Composer disabled={busy || snapshot === null} pending={phase === "sending"} onSend={(message) => void onSend(message)} />
         </section>
         <TracePanel
