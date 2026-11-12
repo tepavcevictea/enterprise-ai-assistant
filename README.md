@@ -4,13 +4,22 @@ A local prototype for fictional Northstar. An orchestrator plans each question, 
 
 ## Architecture
 
-| From | To | What happens |
-| --- | --- | --- |
-| Person | Orchestrator | Asks a question. Only the orchestrator replies. |
-| Orchestrator | IT specialist | Service status, VPN troubleshooting, simulated password reset. |
-| Orchestrator | HR specialist | Company policy, leave, and equipment profiles. |
-| IT specialist | Native tools | `getServiceStatus`, `loadSkill`, `simulatePasswordReset`. |
-| HR specialist | Policy Worker | `searchPolicies` over MCP, on a private service binding. |
+```mermaid
+flowchart TB
+  person([Person])
+  orchestrator[Orchestrator]
+  it[IT specialist]
+  hr[HR specialist]
+  tools["Native tools<br/>status, VPN skill, reset"]
+  policy["Policy Worker<br/>MCP searchPolicies"]
+
+  person -->|asks| orchestrator
+  orchestrator -->|replies| person
+  orchestrator --> it
+  orchestrator --> hr
+  it --> tools
+  hr --> policy
+```
 
 There are exactly three agents. Only the orchestrator speaks to the user. Planning uses `gpt-6.1-sol` through the Vercel AI SDK on the OpenAI Responses API, with `store: false`, medium reasoning for the plan, and low reasoning for the specialists. Independent tasks run in one wave. A dependent task waits for a typed handoff, such as the equipment profile id, and does not receive the other specialist's raw text.
 
