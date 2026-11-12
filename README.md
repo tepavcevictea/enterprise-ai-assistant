@@ -15,8 +15,10 @@ flowchart TB
 
   person -->|asks| orchestrator
   orchestrator -->|replies| person
-  orchestrator --> it
-  orchestrator --> hr
+  orchestrator -->|assigns| it
+  orchestrator -->|assigns| hr
+  it -->|reports| orchestrator
+  hr -->|reports| orchestrator
   it --> tools
   hr --> policy
 ```
