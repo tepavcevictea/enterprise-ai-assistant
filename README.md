@@ -4,14 +4,13 @@ A local prototype for fictional Northstar. An orchestrator plans each question, 
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  person[Person] --> orchestrator[Orchestrator]
-  orchestrator --> it[IT specialist]
-  orchestrator --> hr[HR specialist]
-  it --> tools[Status, skill, reset]
-  hr --> policy[Policy Worker]
-```
+| From | To | What happens |
+| --- | --- | --- |
+| Person | Orchestrator | Asks a question. Only the orchestrator replies. |
+| Orchestrator | IT specialist | Service status, VPN troubleshooting, simulated password reset. |
+| Orchestrator | HR specialist | Company policy, leave, and equipment profiles. |
+| IT specialist | Native tools | `getServiceStatus`, `loadSkill`, `simulatePasswordReset`. |
+| HR specialist | Policy Worker | `searchPolicies` over MCP, on a private service binding. |
 
 There are exactly three agents. Only the orchestrator speaks to the user. Planning uses `gpt-6.1-sol` through the Vercel AI SDK on the OpenAI Responses API, with `store: false`, medium reasoning for the plan, and low reasoning for the specialists. Independent tasks run in one wave. A dependent task waits for a typed handoff, such as the equipment profile id, and does not receive the other specialist's raw text.
 
@@ -44,11 +43,13 @@ I used GPT-6 to plan the system, compare tradeoffs, and review the approach, and
 
 Approximately 7 to 8 hours of active development, spread across two working days.
 
-All seven required scenarios were verified using real LLM executions, alongside deterministic tests for orchestration and permission boundaries. Broader conversational evaluation was limited by the timebox. Testing multi-turn context, ambiguous requests, unsupported questions, prompt-injection resilience, and response quality would be a priority before real user deployment.
+What I finished is the working prototype: three agents, two demo users, real model calls, MCP policy search, the on-demand VPN skill, simulated password resets with authorization, and a React conversation with an execution trace. Deterministic tests cover orchestration and permission boundaries. All seven required scenarios were verified with real LLM executions, and I read those traces.
 
-Conversational quality matters because it is what the person using the assistant actually experiences. A trace can be correct while the reply is still confusing, and that is the part the user sees.
+What I did not finish, because the time ran out, is a broader conversational evaluation. Next I would test multi-turn context, ambiguous requests, unsupported questions, prompt-injection resilience, and response quality. Response quality is the large one, because it is what a person actually reads. A trace can be correct while the reply is still confusing, and that is the experience that would matter before anyone used this for real.
 
-Identities are simulated. Policies are three short documents, matched by words, not embeddings. Embeddings and semantic retrieval would have been unnecessary complexity for a corpus this small. I would add them only if the documents grew enough that word matching stopped finding the right one. Nothing here is a deployed service. Still open: a prompt-injection fixture, failing the turn at the four-step cap, and a follow-up when a write has no target. A real deployment would replace the demo switch with authentication and add monitoring.
+The policies are three short documents, matched by words, not embeddings. An assistant like this would usually sit on a much larger set of policies, enough text that I would embed the documents and retrieve them with RAG. I left that for the end of the time slot, after the required scenarios were solid. There was no time left for it.
+
+Identities are simulated, and this is not a deployed service. Still open inside the current design: failing the turn when the four-step cap is hit, and asking a follow-up when a write has no target. A real deployment would replace the demo switch with authentication and add monitoring.
 
 ## Setup and demonstration
 
